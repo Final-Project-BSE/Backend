@@ -1,6 +1,6 @@
 package com.example.MathruAI_BackEnd.security;
 
-import com.example.MathruAI_BackEnd.service.UserDetailsServiceImpl; // Changed from CustomUserDetailsService
+import com.example.MathruAI_BackEnd.service.impl.UserDetailsServiceImpl; // Changed from CustomUserDetailsService
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/signup","/api/auth/signin").permitAll();
 //                         .requestMatchers( "/api/auth/signin").permitAll();
 //                         .requestMatchers("/api/auth/").authenticated();
+                        auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll();
 
                     auth.anyRequest().authenticated();
                 })

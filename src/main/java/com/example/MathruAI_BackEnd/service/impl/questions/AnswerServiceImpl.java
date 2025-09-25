@@ -4,12 +4,14 @@ import com.example.MathruAI_BackEnd.dto.questionDto.AnswerDto;
 import com.example.MathruAI_BackEnd.entity.questions.Answer;
 import com.example.MathruAI_BackEnd.repository.questions.AnswerRepository;
 import com.example.MathruAI_BackEnd.service.interservice.questions.AnswerServiceInter;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+@Service
 public class AnswerServiceImpl implements AnswerServiceInter {
 
     private final AnswerRepository answerRepository;

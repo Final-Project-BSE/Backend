@@ -5,11 +5,13 @@ import com.example.MathruAI_BackEnd.dto.questionDto.OptionDto;
 import com.example.MathruAI_BackEnd.entity.questions.Options;
 import com.example.MathruAI_BackEnd.repository.questions.OptionsRepository;
 import com.example.MathruAI_BackEnd.service.interservice.questions.OptionsServiceInter;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+@Service
 public class OptionsServiceImpl implements OptionsServiceInter {
 
     private final OptionsRepository optionRepository;

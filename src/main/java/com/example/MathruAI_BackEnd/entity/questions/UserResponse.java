@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.w3c.dom.Text;
 
 import java.time.LocalDateTime;
 
@@ -12,12 +11,15 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Answer {
+public class UserResponse {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int answerId;
+    private int responseId;
+    private int userId;
+    private int formId;
+    private int questionId;
     @Lob
     @Column(columnDefinition = "TEXT")
-    private String answerText;
-    private LocalDateTime createdAt;
+    private String responseText;
+    private LocalDateTime submittedAt;
 }

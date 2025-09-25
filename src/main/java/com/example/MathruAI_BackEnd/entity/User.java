@@ -1,6 +1,5 @@
 package com.example.MathruAI_BackEnd.entity;
 
-import com.example.MathruAI_BackEnd.entity.questions.Answer;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,8 +28,5 @@ public class User {
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     private Set<Role> roles;
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "userId")
-    private List<Answer> answers;
 
 }

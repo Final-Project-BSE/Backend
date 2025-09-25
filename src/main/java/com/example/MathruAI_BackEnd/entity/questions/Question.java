@@ -17,13 +17,17 @@ public class Question {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int questionId;
     private String questionText;
+    private boolean isRequired;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     private Set<QuestionType> questionTypes;
+
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "questionId")
     private List<Options> optionsList;
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "questionId")
-    private List<Answer> answers;
+
+    @ManyToOne
+    @JoinColumn(name = "formId")
+    private PersonalDataForm form;
 }

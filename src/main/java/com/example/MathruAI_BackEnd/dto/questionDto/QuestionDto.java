@@ -1,6 +1,5 @@
 package com.example.MathruAI_BackEnd.dto.questionDto;
 
-import com.example.MathruAI_BackEnd.entity.questions.Answer;
 import com.example.MathruAI_BackEnd.entity.questions.Options;
 import com.example.MathruAI_BackEnd.entity.questions.QuestionType;
 import lombok.AllArgsConstructor;
@@ -16,7 +15,8 @@ import java.util.Set;
 public class QuestionDto {
     private int questionId;
     private String questionText;
+    private boolean isRequired;
     private Set<QuestionType> questionTypes;
     private List<Options> optionsList;
-    private List<Answer> answers;
+    private int formId;
 }

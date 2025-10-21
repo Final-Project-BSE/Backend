@@ -1,6 +1,5 @@
 package com.example.MathruAI_BackEnd.service.impl;
 
-
 import com.example.MathruAI_BackEnd.dto.AuthResponse;
 import com.example.MathruAI_BackEnd.dto.LoginRequest;
 import com.example.MathruAI_BackEnd.dto.SignupRequest;
@@ -20,10 +19,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.example.MathruAI_BackEnd.entity.*;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,7 +37,11 @@ public class AuthService {
 
     public ResponseEntity<?> signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            return ResponseEntity.badRequest().body("Error: Email is already taken!");
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "FAIL");
+            response.put("message", "Email is already taken!");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
         }
 
         // Create new user's account
@@ -51,26 +56,52 @@ public class AuthService {
 
         userRepository.save(user);
 
-        return ResponseEntity.ok().body("User registered successfully!");
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "SUCCESS");
+        response.put("message", "User registered successfully!");
+        response.put("data", null);
+        return ResponseEntity.ok().body(response);
     }
 
     public ResponseEntity<?> signin(LoginRequest request) {
-        Authentication authentication = authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(),
-                        request.getPassword()));
+        try {
+            Authentication authentication = authManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(),
+                            request.getPassword()));
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtil.generateJwtToken(authentication);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = jwtUtil.generateJwtToken(authentication);
 
-        UserPrincipal userDetails = (UserPrincipal) authentication.getPrincipal();
-        // Fixed: Use getEmail() instead of get()
-        User user = userRepository.findByEmail(userDetails.getEmail()).get();
+            UserPrincipal userDetails = (UserPrincipal) authentication.getPrincipal();
+            User user = userRepository.findByEmail(userDetails.getEmail()).get();
 
-        // Return email in the response instead of username
-        return ResponseEntity.ok(new AuthResponse(jwt, userDetails.getEmail(), user.getRoles()));
+            // Convert roles to string array
+            Set<String> roleStrings = user.getRoles().stream()
+                    .map(Enum::name)
+                    .collect(Collectors.toSet());
+
+            // Create data object
+            Map<String, Object> data = new HashMap<>();
+            data.put("email", user.getEmail());
+            data.put("token", jwt);
+            data.put("roles", roleStrings);
+
+            // Create response wrapper
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "SUCCESS");
+            response.put("message", "Login successful");
+            response.put("data", data);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "FAIL");
+            response.put("message", "The email or password you entered is incorrect. Please try again.");
+            response.put("data", null);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
     }
 
-    @GetMapping("/validate-token")
     public ResponseEntity<?> validateToken(HttpServletRequest request) {
         try {
             String jwt = parseJwt(request);
@@ -79,12 +110,24 @@ public class AuthService {
                 Optional<User> user = userRepository.findByEmail(email);
 
                 if (user.isPresent()) {
-                    return ResponseEntity.ok().body("Token is valid");
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("status", "SUCCESS");
+                    response.put("message", "Token is valid");
+                    response.put("data", null);
+                    return ResponseEntity.ok().body(response);
                 }
             }
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "FAIL");
+            response.put("message", "Invalid token");
+            response.put("data", null);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token validation failed");
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "FAIL");
+            response.put("message", "Token validation failed");
+            response.put("data", null);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
     }
 
@@ -96,7 +139,6 @@ public class AuthService {
         return null;
     }
 
-
     public User getUserById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id " + id));
@@ -107,7 +149,6 @@ public class AuthService {
         existingUser.setFirstName(user.getFirstName());
         existingUser.setLastName(user.getLastName());
         existingUser.setEmail(user.getEmail());
-        // update other fields if needed
         return userRepository.save(existingUser);
     }
 

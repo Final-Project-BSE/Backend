@@ -1,4 +1,4 @@
-package com.example.MathruAI_BackEnd.service;
+package com.example.MathruAI_BackEnd.service.impl;
 
 import com.example.MathruAI_BackEnd.entity.User;
 import com.example.MathruAI_BackEnd.repository.UserRepository;

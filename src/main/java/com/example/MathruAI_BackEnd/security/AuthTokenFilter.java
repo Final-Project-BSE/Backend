@@ -1,6 +1,6 @@
 package com.example.MathruAI_BackEnd.security;
 
-import com.example.MathruAI_BackEnd.service.UserDetailsServiceImpl;
+import com.example.MathruAI_BackEnd.service.impl.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

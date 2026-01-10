@@ -11,19 +11,9 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FertilityResponseDto {
-
-    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate fertileWindowStart;
-
-    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate fertileWindowEnd;
-
-    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate ovulationDate;
-
-    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate nextPeriodDate;
-
-    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate pregnancyTestDay;
 }

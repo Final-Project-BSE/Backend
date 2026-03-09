@@ -12,5 +12,5 @@ public class UserUpdateRequest {
     private String lastName;
     private String phoneNumber;
     private LocalDate dateOfBirth;
-    private Set<Role> roles; // remove if you don't want role editing
+    private Set<Role> roles;
 }

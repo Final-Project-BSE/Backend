@@ -19,7 +19,7 @@ public class FertilityController {
 
     public FertilityController(FertilityCalculatorService service) {
         this.service = service;
-        log.info("✅ FertilityController initialized");
+        log.info("FertilityController initialized");
     }
 
     @PostMapping("/calculate")

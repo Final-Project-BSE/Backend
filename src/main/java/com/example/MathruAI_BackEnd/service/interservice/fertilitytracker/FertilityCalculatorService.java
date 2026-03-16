@@ -17,7 +17,7 @@ import java.time.LocalDate;
 public class FertilityCalculatorService {
 
     private final CycleDataRepository cycleDataRepository;
-    private final UserRepository userRepository; // ✅ added
+    private final UserRepository userRepository;
 
     public FertilityResponseDto calculateAndSave(String userSub, FertilityRequestDto request) {
 
@@ -29,7 +29,6 @@ public class FertilityCalculatorService {
             throw new InvalidInputException("Average cycle length must be between 21 and 35 days");
         }
 
-        // ✅ Find actual User (required because CycleData.user is NOT NULL)
         User user = userRepository.findByEmail(userSub)
                 .orElseThrow(() -> new RuntimeException("User not found for email: " + userSub));
 
@@ -43,8 +42,8 @@ public class FertilityCalculatorService {
         LocalDate pregnancyTestDay = nextPeriodDate.plusDays(1);
 
         CycleData cycleData = new CycleData();
-        cycleData.setUser(user);         // ✅ IMPORTANT: fills user_id
-        cycleData.setUserSub(userSub);   // (optional, but your table has NOT NULL so keep)
+        cycleData.setUser(user);
+        cycleData.setUserSub(userSub);
         cycleData.setLastPeriodDate(lastPeriod);
         cycleData.setAverageCycleLength(cycleLength);
         cycleData.setFertileWindowStart(fertileStart);

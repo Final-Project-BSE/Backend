@@ -31,8 +31,6 @@ public class FileUploadService {
 
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-        // Return the path as a URL (for local dev, this might be a relative path or a
-        // specialized endpoint)
         return "/api/health-records/files/" + fileName;
     }
 

@@ -17,33 +17,68 @@ import java.time.LocalDate;
 public class FertilityCalculatorService {
 
     private final CycleDataRepository cycleDataRepository;
-    private final UserRepository userRepository; // ✅ added
+    private final UserRepository userRepository; //
 
     public FertilityResponseDto calculateAndSave(String userSub, FertilityRequestDto request) {
 
-        if (request.getLastPeriodDate() == null) {
-            throw new InvalidInputException("Last period date is required");
+        LocalDate lastPeriod;
+
+        if (request.getLastPeriodDate() != null) {
+
+            // user entered new period
+            lastPeriod = request.getLastPeriodDate();
+
+        } else {
+
+            CycleData lastCycle = cycleDataRepository
+                    .findTopByUserSubOrderByIdDesc(userSub)
+                    .orElseThrow(() ->
+                            new InvalidInputException("Last period date required for first cycle"));
+
+            lastPeriod = lastCycle.getLastPeriodDate();
+            int cycleLength = lastCycle.getAverageCycleLength();
+
+            LocalDate predictedNext = lastCycle.getNextPeriodDate();
+            LocalDate today = LocalDate.now();
+
+            // auto progress cycles if today passed predicted period
+            while (today.isAfter(predictedNext)) {
+                lastPeriod = predictedNext;
+                predictedNext = predictedNext.plusDays(cycleLength);
+            }
         }
+
+
 
         if (request.getAverageCycleLength() < 21 || request.getAverageCycleLength() > 35) {
             throw new InvalidInputException("Average cycle length must be between 21 and 35 days");
         }
 
-        // ✅ Find actual User (required because CycleData.user is NOT NULL)
+        //  Find actual User (required because CycleData.user is NOT NULL)
         User user = userRepository.findByEmail(userSub)
                 .orElseThrow(() -> new RuntimeException("User not found for email: " + userSub));
 
-        LocalDate lastPeriod = request.getLastPeriodDate();
+
         int cycleLength = request.getAverageCycleLength();
 
         LocalDate ovulationDate = lastPeriod.plusDays(cycleLength - 14);
-        LocalDate fertileStart = ovulationDate.minusDays(5);
-        LocalDate fertileEnd = ovulationDate.plusDays(1);
+
+        LocalDate fertileStart = ovulationDate.minusDays(6);
+        LocalDate fertileEnd = ovulationDate;
+
         LocalDate nextPeriodDate = lastPeriod.plusDays(cycleLength);
         LocalDate pregnancyTestDay = nextPeriodDate.plusDays(1);
 
+        LocalDate safeStart1 = lastPeriod;
+        LocalDate safeEnd1 = fertileStart.minusDays(1);
+        if (safeEnd1.isBefore(safeStart1)) safeEnd1 = safeStart1;
+
+        LocalDate safeStart2 = fertileEnd.plusDays(1);
+        LocalDate safeEnd2 = nextPeriodDate.minusDays(1);
+        if (safeEnd2.isBefore(safeStart2)) safeEnd2 = safeStart2;
+
         CycleData cycleData = new CycleData();
-        cycleData.setUser(user);         // ✅ IMPORTANT: fills user_id
+        cycleData.setUser(user);         //  IMPORTANT: fills user_id
         cycleData.setUserSub(userSub);   // (optional, but your table has NOT NULL so keep)
         cycleData.setLastPeriodDate(lastPeriod);
         cycleData.setAverageCycleLength(cycleLength);
@@ -53,6 +88,11 @@ public class FertilityCalculatorService {
         cycleData.setNextPeriodDate(nextPeriodDate);
         cycleData.setPregnancyTestDay(pregnancyTestDay);
 
+        cycleData.setSafeStart1(safeStart1);
+        cycleData.setSafeEnd1(safeEnd1);
+        cycleData.setSafeStart2(safeStart2);
+        cycleData.setSafeEnd2(safeEnd2);
+
         cycleDataRepository.save(cycleData);
 
         return new FertilityResponseDto(
@@ -60,8 +100,12 @@ public class FertilityCalculatorService {
                 fertileEnd,
                 ovulationDate,
                 nextPeriodDate,
-                pregnancyTestDay
-        );
+                pregnancyTestDay,
+                safeStart1,
+                safeEnd1,
+                safeStart2,
+                safeEnd2
+                );
     }
 
     public CycleData getLatestForUser(String userSub) {

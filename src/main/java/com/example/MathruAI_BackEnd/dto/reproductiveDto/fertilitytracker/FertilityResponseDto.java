@@ -16,4 +16,8 @@ public class FertilityResponseDto {
     private LocalDate ovulationDate;
     private LocalDate nextPeriodDate;
     private LocalDate pregnancyTestDay;
+    private LocalDate safeStart1;
+    private LocalDate safeEnd1;
+    private LocalDate safeStart2;
+    private LocalDate safeEnd2;
 }

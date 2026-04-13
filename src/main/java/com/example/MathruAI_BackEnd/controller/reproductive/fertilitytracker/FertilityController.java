@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/fertility")
 public class FertilityController {
@@ -42,7 +43,12 @@ public class FertilityController {
                 data.getFertileWindowEnd(),
                 data.getOvulationDate(),
                 data.getNextPeriodDate(),
-                data.getPregnancyTestDay()
+                data.getPregnancyTestDay(),
+                data.getSafeStart1(),
+                data.getSafeEnd1(),
+                data.getSafeStart2(),
+                data.getSafeEnd2()
+
         ));
     }
 }

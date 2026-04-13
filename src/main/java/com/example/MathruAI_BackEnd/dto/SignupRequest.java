@@ -15,4 +15,8 @@ public class SignupRequest {
     private LocalDate dateOfBirth;
     private String password;
     private Set<Role> roles;
+
+    private String nationalIdNumber;
+    private String address;
+    private String profileImageUrl;
 }

@@ -7,9 +7,20 @@ import com.example.MathruAI_BackEnd.dto.ProfileDto.ProfileResponseDto;
 import com.example.MathruAI_BackEnd.dto.ProfileDto.ProfileUpdateRequestDto;
 import com.example.MathruAI_BackEnd.entity.User;
 import com.example.MathruAI_BackEnd.repository.UserRepository;
+import com.example.MathruAI_BackEnd.repository.reproductive.fertilitytracker.CycleDataRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -18,14 +29,17 @@ public class ProfileService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // ─── View Profile ────────────────────────────────────────────────────────────
+    private final CycleDataRepository cycleDataRepository;
+
+    @Value("${file.upload-dir2:uploads/profile-images}")
+    private String uploadDir;
+
     public ProfileResponseDto getProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
         return mapToResponseDto(user);
     }
 
-    // ─── Update Basic Profile (firstName, lastName, phone, dob) ─────────────────
     public ProfileResponseDto updateProfile(Long userId, ProfileUpdateRequestDto request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
@@ -34,11 +48,13 @@ public class ProfileService {
         if (request.getLastName() != null) user.setLastName(request.getLastName());
         if (request.getPhoneNumber() != null) user.setPhoneNumber(request.getPhoneNumber());
         if (request.getDateOfBirth() != null) user.setDateOfBirth(request.getDateOfBirth());
+        if (request.getNationalIdNumber() != null) user.setNationalIdNumber(request.getNationalIdNumber());
+        if (request.getAddress() != null) user.setAddress(request.getAddress());
+        if (request.getProfileImageUrl() != null) user.setProfileImageUrl(request.getProfileImageUrl());
 
         return mapToResponseDto(userRepository.save(user));
     }
 
-    // ─── Change Password ─────────────────────────────────────────────────────────
     public String changePassword(Long userId, ChangePasswordRequestDto request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
@@ -55,7 +71,6 @@ public class ProfileService {
         return "Password changed successfully.";
     }
 
-    // ─── Change Email ─────────────────────────────────────────────────────────────
     public ProfileResponseDto changeEmail(Long userId, ChangeEmailRequestDto request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
@@ -71,7 +86,6 @@ public class ProfileService {
         return mapToResponseDto(userRepository.save(user));
     }
 
-    // ─── Change Role ──────────────────────────────────────────────────────────────
     public ProfileResponseDto changeRole(Long userId, ChangeRoleRequestDto request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
@@ -84,14 +98,49 @@ public class ProfileService {
         return mapToResponseDto(userRepository.save(user));
     }
 
-    // ─── Permanent Delete ─────────────────────────────────────────────────────────
+    public ProfileResponseDto uploadProfileImage(Long userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("Profile image file is empty.");
+        }
+
+        try {
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+
+            String fileName = UUID.randomUUID() + extension;
+            Path filePath = uploadPath.resolve(fileName);
+
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            user.setProfileImageUrl("/uploads/profile-images/" + fileName);
+            return mapToResponseDto(userRepository.save(user));
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload profile image.", e);
+        }
+    }
+
+    @Transactional
     public void deleteAccount(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        cycleDataRepository.deleteByUserId(userId);
         userRepository.delete(user);
     }
 
-    // ─── Mapper Helper ────────────────────────────────────────────────────────────
     private ProfileResponseDto mapToResponseDto(User user) {
         return ProfileResponseDto.builder()
                 .id(user.getId())
@@ -100,6 +149,9 @@ public class ProfileService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .dateOfBirth(user.getDateOfBirth())
+                .nationalIdNumber(user.getNationalIdNumber())
+                .address(user.getAddress())
+                .profileImageUrl(user.getProfileImageUrl())
                 .roles(user.getRoles())
                 .build();
     }

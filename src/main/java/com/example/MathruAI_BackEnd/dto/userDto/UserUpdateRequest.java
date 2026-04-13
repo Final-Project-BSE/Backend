@@ -12,5 +12,8 @@ public class UserUpdateRequest {
     private String lastName;
     private String phoneNumber;
     private LocalDate dateOfBirth;
+    private String nationalIdNumber;
+    private String address;
+    private String profileImageUrl;
     private Set<Role> roles;
 }

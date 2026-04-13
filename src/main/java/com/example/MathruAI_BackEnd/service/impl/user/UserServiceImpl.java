@@ -28,6 +28,9 @@ public class UserServiceImpl implements UserService {
                 u.getEmail(),
                 u.getPhoneNumber(),
                 u.getDateOfBirth(),
+                u.getNationalIdNumber(),
+                u.getAddress(),
+                u.getProfileImageUrl(),
                 u.getRoles()
         );
     }
@@ -53,6 +56,9 @@ public class UserServiceImpl implements UserService {
         if (request.getLastName() != null) u.setLastName(request.getLastName());
         if (request.getPhoneNumber() != null) u.setPhoneNumber(request.getPhoneNumber());
         if (request.getDateOfBirth() != null) u.setDateOfBirth(request.getDateOfBirth());
+        if (request.getNationalIdNumber() != null) u.setNationalIdNumber(request.getNationalIdNumber());
+        if (request.getAddress() != null) u.setAddress(request.getAddress());
+        if (request.getProfileImageUrl() != null) u.setProfileImageUrl(request.getProfileImageUrl());
         if (request.getRoles() != null) u.setRoles(request.getRoles());
 
         return toDto(userRepository.save(u));
@@ -77,6 +83,9 @@ public class UserServiceImpl implements UserService {
                 user.getEmail(),
                 user.getPhoneNumber(),
                 user.getDateOfBirth(),
+                user.getNationalIdNumber(),
+                user.getAddress(),
+                user.getProfileImageUrl(),
                 user.getRoles()
         );
     }

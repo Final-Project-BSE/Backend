@@ -1,8 +1,8 @@
 package com.example.MathruAI_BackEnd.service.impl;
 
-import com.example.MathruAI_BackEnd.dto.AuthResponse;
 import com.example.MathruAI_BackEnd.dto.LoginRequest;
 import com.example.MathruAI_BackEnd.dto.SignupRequest;
+import com.example.MathruAI_BackEnd.entity.Role;
 import com.example.MathruAI_BackEnd.entity.User;
 import com.example.MathruAI_BackEnd.repository.UserRepository;
 import com.example.MathruAI_BackEnd.security.JwtUtil;
@@ -17,7 +17,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import com.example.MathruAI_BackEnd.entity.*;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
@@ -44,7 +43,18 @@ public class AuthService {
             return ResponseEntity.badRequest().body(response);
         }
 
-        // Create new user's account
+        if (request.getNationalIdNumber() != null && !request.getNationalIdNumber().isBlank()) {
+            boolean nidExists = userRepository.findAll().stream()
+                    .anyMatch(u -> request.getNationalIdNumber().equals(u.getNationalIdNumber()));
+            if (nidExists) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("status", "FAIL");
+                response.put("message", "National ID number is already taken!");
+                response.put("data", null);
+                return ResponseEntity.badRequest().body(response);
+            }
+        }
+
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
@@ -52,6 +62,9 @@ public class AuthService {
         user.setPassword(encoder.encode(request.getPassword()));
         user.setDateOfBirth(request.getDateOfBirth());
         user.setPhoneNumber(request.getPhoneNumber());
+        user.setNationalIdNumber(request.getNationalIdNumber());
+        user.setAddress(request.getAddress());
+        user.setProfileImageUrl(request.getProfileImageUrl());
         user.setRoles(request.getRoles() != null ? request.getRoles() : Set.of(Role.HOPE_TO_PREGNANT_MOTHER));
 
         userRepository.save(user);
@@ -66,8 +79,7 @@ public class AuthService {
     public ResponseEntity<?> signin(LoginRequest request) {
         try {
             Authentication authentication = authManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(),
-                            request.getPassword()));
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             String jwt = jwtUtil.generateJwtToken(authentication);
@@ -75,18 +87,15 @@ public class AuthService {
             UserPrincipal userDetails = (UserPrincipal) authentication.getPrincipal();
             User user = userRepository.findByEmail(userDetails.getEmail()).get();
 
-            // Convert roles to string array
             Set<String> roleStrings = user.getRoles().stream()
                     .map(Enum::name)
                     .collect(Collectors.toSet());
 
-            // Create data object
             Map<String, Object> data = new HashMap<>();
             data.put("email", user.getEmail());
             data.put("token", jwt);
             data.put("roles", roleStrings);
 
-            // Create response wrapper
             Map<String, Object> response = new HashMap<>();
             response.put("status", "SUCCESS");
             response.put("message", "Login successful");
@@ -146,9 +155,16 @@ public class AuthService {
 
     public User updateUser(Long id, User user) {
         User existingUser = getUserById(id);
+
         existingUser.setFirstName(user.getFirstName());
         existingUser.setLastName(user.getLastName());
         existingUser.setEmail(user.getEmail());
+        existingUser.setPhoneNumber(user.getPhoneNumber());
+        existingUser.setDateOfBirth(user.getDateOfBirth());
+        existingUser.setNationalIdNumber(user.getNationalIdNumber());
+        existingUser.setAddress(user.getAddress());
+        existingUser.setProfileImageUrl(user.getProfileImageUrl());
+
         return userRepository.save(existingUser);
     }
 

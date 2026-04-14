@@ -1,5 +1,6 @@
 package com.example.MathruAI_BackEnd.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -36,6 +37,28 @@ public class User {
     private String address;
 
     private String profileImageUrl;
+
+    /**
+     * old field kept for backward compatibility
+     */
+    private String area;
+
+    @Column(name = "district")
+    private String district;
+
+    @Column(name = "moh_area")
+    private String mohArea;
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_midwife_id")
+    @JsonIgnore
+    private User assignedMidwife;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)

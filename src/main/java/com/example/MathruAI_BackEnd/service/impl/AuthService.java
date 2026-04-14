@@ -43,16 +43,14 @@ public class AuthService {
             return ResponseEntity.badRequest().body(response);
         }
 
-        if (request.getNationalIdNumber() != null && !request.getNationalIdNumber().isBlank()) {
-            boolean nidExists = userRepository.findAll().stream()
-                    .anyMatch(u -> request.getNationalIdNumber().equals(u.getNationalIdNumber()));
-            if (nidExists) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("status", "FAIL");
-                response.put("message", "National ID number is already taken!");
-                response.put("data", null);
-                return ResponseEntity.badRequest().body(response);
-            }
+        if (request.getNationalIdNumber() != null
+                && !request.getNationalIdNumber().isBlank()
+                && userRepository.existsByNationalIdNumber(request.getNationalIdNumber())) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "FAIL");
+            response.put("message", "National ID number is already taken!");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
         }
 
         User user = new User();
@@ -65,7 +63,14 @@ public class AuthService {
         user.setNationalIdNumber(request.getNationalIdNumber());
         user.setAddress(request.getAddress());
         user.setProfileImageUrl(request.getProfileImageUrl());
-        user.setRoles(request.getRoles() != null ? request.getRoles() : Set.of(Role.HOPE_TO_PREGNANT_MOTHER));
+        user.setArea(request.getArea());
+        user.setDistrict(normalizeText(request.getDistrict()));
+        user.setMohArea(normalizeText(request.getMohArea()));
+        user.setLatitude(request.getLatitude());
+        user.setLongitude(request.getLongitude());
+        user.setRoles(request.getRoles() != null && !request.getRoles().isEmpty()
+                ? request.getRoles()
+                : Set.of(Role.HOPE_TO_PREGNANT_MOTHER));
 
         userRepository.save(user);
 
@@ -73,7 +78,7 @@ public class AuthService {
         response.put("status", "SUCCESS");
         response.put("message", "User registered successfully!");
         response.put("data", null);
-        return ResponseEntity.ok().body(response);
+        return ResponseEntity.ok(response);
     }
 
     public ResponseEntity<?> signin(LoginRequest request) {
@@ -85,7 +90,7 @@ public class AuthService {
             String jwt = jwtUtil.generateJwtToken(authentication);
 
             UserPrincipal userDetails = (UserPrincipal) authentication.getPrincipal();
-            User user = userRepository.findByEmail(userDetails.getEmail()).get();
+            User user = userRepository.findByEmail(userDetails.getEmail()).orElseThrow();
 
             Set<String> roleStrings = user.getRoles().stream()
                     .map(Enum::name)
@@ -95,6 +100,14 @@ public class AuthService {
             data.put("email", user.getEmail());
             data.put("token", jwt);
             data.put("roles", roleStrings);
+            data.put("userId", user.getId());
+            data.put("area", user.getArea());
+            data.put("district", user.getDistrict());
+            data.put("mohArea", user.getMohArea());
+            data.put("latitude", user.getLatitude());
+            data.put("longitude", user.getLongitude());
+            data.put("assignedMidwifeId",
+                    user.getAssignedMidwife() != null ? user.getAssignedMidwife().getId() : null);
 
             Map<String, Object> response = new HashMap<>();
             response.put("status", "SUCCESS");
@@ -123,7 +136,7 @@ public class AuthService {
                     response.put("status", "SUCCESS");
                     response.put("message", "Token is valid");
                     response.put("data", null);
-                    return ResponseEntity.ok().body(response);
+                    return ResponseEntity.ok(response);
                 }
             }
             Map<String, Object> response = new HashMap<>();
@@ -164,11 +177,20 @@ public class AuthService {
         existingUser.setNationalIdNumber(user.getNationalIdNumber());
         existingUser.setAddress(user.getAddress());
         existingUser.setProfileImageUrl(user.getProfileImageUrl());
+        existingUser.setArea(user.getArea());
+        existingUser.setDistrict(normalizeText(user.getDistrict()));
+        existingUser.setMohArea(normalizeText(user.getMohArea()));
+        existingUser.setLatitude(user.getLatitude());
+        existingUser.setLongitude(user.getLongitude());
 
         return userRepository.save(existingUser);
     }
 
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
+    }
+
+    private String normalizeText(String value) {
+        return value == null ? null : value.trim();
     }
 }

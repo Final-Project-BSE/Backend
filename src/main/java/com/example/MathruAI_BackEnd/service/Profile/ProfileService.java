@@ -28,7 +28,6 @@ public class ProfileService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-
     private final CycleDataRepository cycleDataRepository;
 
     @Value("${file.upload-dir2:uploads/profile-images}")
@@ -48,9 +47,21 @@ public class ProfileService {
         if (request.getLastName() != null) user.setLastName(request.getLastName());
         if (request.getPhoneNumber() != null) user.setPhoneNumber(request.getPhoneNumber());
         if (request.getDateOfBirth() != null) user.setDateOfBirth(request.getDateOfBirth());
+
+        if (request.getNationalIdNumber() != null &&
+                !request.getNationalIdNumber().equals(user.getNationalIdNumber()) &&
+                userRepository.existsByNationalIdNumber(request.getNationalIdNumber())) {
+            throw new RuntimeException("National ID number is already in use.");
+        }
+
         if (request.getNationalIdNumber() != null) user.setNationalIdNumber(request.getNationalIdNumber());
         if (request.getAddress() != null) user.setAddress(request.getAddress());
         if (request.getProfileImageUrl() != null) user.setProfileImageUrl(request.getProfileImageUrl());
+        if (request.getArea() != null) user.setArea(request.getArea());
+        if (request.getDistrict() != null) user.setDistrict(normalizeText(request.getDistrict()));
+        if (request.getMohArea() != null) user.setMohArea(normalizeText(request.getMohArea()));
+        if (request.getLatitude() != null) user.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null) user.setLongitude(request.getLongitude());
 
         return mapToResponseDto(userRepository.save(user));
     }
@@ -152,7 +163,17 @@ public class ProfileService {
                 .nationalIdNumber(user.getNationalIdNumber())
                 .address(user.getAddress())
                 .profileImageUrl(user.getProfileImageUrl())
+                .area(user.getArea())
+                .district(user.getDistrict())
+                .mohArea(user.getMohArea())
+                .latitude(user.getLatitude())
+                .longitude(user.getLongitude())
+                .assignedMidwifeId(user.getAssignedMidwife() != null ? user.getAssignedMidwife().getId() : null)
                 .roles(user.getRoles())
                 .build();
+    }
+
+    private String normalizeText(String value) {
+        return value == null ? null : value.trim();
     }
 }

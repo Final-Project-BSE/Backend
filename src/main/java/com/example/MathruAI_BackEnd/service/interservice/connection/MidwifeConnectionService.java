@@ -2,6 +2,7 @@ package com.example.MathruAI_BackEnd.service.interservice.connection;
 
 import com.example.MathruAI_BackEnd.dto.connection.AreaMapSearchRequestDto;
 import com.example.MathruAI_BackEnd.dto.connection.AreaSearchRequestDto;
+import com.example.MathruAI_BackEnd.dto.connection.AssignedPatientDetailResponseDto;
 import com.example.MathruAI_BackEnd.dto.connection.AssignedUserProfileUpdateRequestDto;
 import com.example.MathruAI_BackEnd.dto.connection.ConnectionRequestResponseDto;
 import com.example.MathruAI_BackEnd.dto.connection.SendConnectionRequestDto;
@@ -31,7 +32,15 @@ public interface MidwifeConnectionService {
             AssignedUserProfileUpdateRequestDto request
     );
 
-    List<UserResponseDto> searchUsersByDistrictAndMohArea(Long requesterId, AreaSearchRequestDto request);
+    List<UserResponseDto> searchUsersByDistrictAndMohArea(
+            Long requesterId,
+            AreaSearchRequestDto request
+    );
 
-    List<UserResponseDto> searchMappableUsersByDistrictAndMohArea(Long requesterId, AreaMapSearchRequestDto request);
+    List<UserResponseDto> searchMappableUsersByDistrictAndMohArea(
+            Long requesterId,
+            AreaMapSearchRequestDto request
+    );
+
+    AssignedPatientDetailResponseDto getAssignedPatientDetail(Long midwifeId, Long motherUserId);
 }

@@ -2,6 +2,7 @@ package com.example.MathruAI_BackEnd.service.impl.connection;
 
 import com.example.MathruAI_BackEnd.dto.connection.AreaMapSearchRequestDto;
 import com.example.MathruAI_BackEnd.dto.connection.AreaSearchRequestDto;
+import com.example.MathruAI_BackEnd.dto.connection.AssignedPatientDetailResponseDto;
 import com.example.MathruAI_BackEnd.dto.connection.AssignedUserProfileUpdateRequestDto;
 import com.example.MathruAI_BackEnd.dto.connection.ConnectionRequestResponseDto;
 import com.example.MathruAI_BackEnd.dto.connection.SendConnectionRequestDto;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -91,7 +93,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                     .status(ConnectionRequestStatus.PENDING)
                     .message(request.getMessage())
                     .matchedArea(method == ConnectionRequestMethod.AREA ? normalizeText(request.getTargetArea()) : null)
-                    .createdAt(java.time.LocalDateTime.now())
+                    .createdAt(LocalDateTime.now())
                     .respondedAt(null)
                     .build();
 
@@ -143,7 +145,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         userRepository.save(motherUser);
 
         entity.setStatus(ConnectionRequestStatus.APPROVED);
-        entity.setRespondedAt(java.time.LocalDateTime.now());
+        entity.setRespondedAt(LocalDateTime.now());
         requestRepository.save(entity);
 
         return mapRequest(entity);
@@ -163,7 +165,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         }
 
         entity.setStatus(ConnectionRequestStatus.REJECTED);
-        entity.setRespondedAt(java.time.LocalDateTime.now());
+        entity.setRespondedAt(LocalDateTime.now());
 
         return mapRequest(requestRepository.save(entity));
     }
@@ -203,18 +205,25 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserResponseDto getAssignedMidwifeForMother(Long motherUserId) {
-        User motherUser = getUserOrThrow(motherUserId);
+    public AssignedPatientDetailResponseDto getAssignedPatientDetail(Long midwifeId, Long motherUserId) {
+        User patient = getAssignedPatientOrThrow(midwifeId, motherUserId);
+        return mapAssignedPatientDetail(patient);
+    }
 
-        if (!hasAnyRole(motherUser, MOTHER_ROLES)) {
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponseDto getAssignedMidwifeForMother(Long motherUserId) {
+        User mother = getUserOrThrow(motherUserId);
+
+        if (!hasAnyRole(mother, MOTHER_ROLES)) {
             throw new RuntimeException("User is not a mother-side user.");
         }
 
-        if (motherUser.getAssignedMidwife() == null) {
-            throw new RuntimeException("No midwife assigned to this user.");
+        if (mother.getAssignedMidwife() == null) {
+            throw new RuntimeException("No midwife is assigned to this user.");
         }
 
-        return mapUser(motherUser.getAssignedMidwife());
+        return mapUser(mother.getAssignedMidwife());
     }
 
     @Override
@@ -223,43 +232,30 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
             Long motherUserId,
             AssignedUserProfileUpdateRequestDto request
     ) {
-        User midwife = getUserOrThrow(midwifeId);
-        User motherUser = getUserOrThrow(motherUserId);
+        User mother = getAssignedPatientOrThrow(midwifeId, motherUserId);
 
-        if (!hasRole(midwife, Role.MIDWIFE)) {
-            throw new RuntimeException("User is not a midwife.");
-        }
-
-        if (!hasAnyRole(motherUser, MOTHER_ROLES)) {
-            throw new RuntimeException("Target user is not a mother-side user.");
-        }
-
-        if (motherUser.getAssignedMidwife() == null ||
-                !Objects.equals(motherUser.getAssignedMidwife().getId(), midwifeId)) {
-            throw new RuntimeException("This mother-side user is not assigned to the given midwife.");
-        }
-
-        if (request.getFirstName() != null) motherUser.setFirstName(request.getFirstName());
-        if (request.getLastName() != null) motherUser.setLastName(request.getLastName());
-        if (request.getPhoneNumber() != null) motherUser.setPhoneNumber(request.getPhoneNumber());
-        if (request.getDateOfBirth() != null) motherUser.setDateOfBirth(request.getDateOfBirth());
+        if (request.getFirstName() != null) mother.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) mother.setLastName(request.getLastName());
+        if (request.getPhoneNumber() != null) mother.setPhoneNumber(request.getPhoneNumber());
+        if (request.getDateOfBirth() != null) mother.setDateOfBirth(request.getDateOfBirth());
 
         if (request.getNationalIdNumber() != null &&
-                !request.getNationalIdNumber().equals(motherUser.getNationalIdNumber()) &&
+                !request.getNationalIdNumber().equals(mother.getNationalIdNumber()) &&
                 userRepository.existsByNationalIdNumber(request.getNationalIdNumber())) {
             throw new RuntimeException("National ID number is already in use.");
         }
 
-        if (request.getNationalIdNumber() != null) motherUser.setNationalIdNumber(request.getNationalIdNumber());
-        if (request.getAddress() != null) motherUser.setAddress(request.getAddress());
-        if (request.getProfileImageUrl() != null) motherUser.setProfileImageUrl(request.getProfileImageUrl());
-        if (request.getArea() != null) motherUser.setArea(request.getArea());
-        if (request.getDistrict() != null) motherUser.setDistrict(normalizeText(request.getDistrict()));
-        if (request.getMohArea() != null) motherUser.setMohArea(normalizeText(request.getMohArea()));
-        if (request.getLatitude() != null) motherUser.setLatitude(request.getLatitude());
-        if (request.getLongitude() != null) motherUser.setLongitude(request.getLongitude());
+        if (request.getNationalIdNumber() != null) mother.setNationalIdNumber(request.getNationalIdNumber());
+        if (request.getAddress() != null) mother.setAddress(request.getAddress());
+        if (request.getProfileImageUrl() != null) mother.setProfileImageUrl(request.getProfileImageUrl());
 
-        return mapUser(userRepository.save(motherUser));
+        if (request.getArea() != null) mother.setArea(request.getArea());
+        if (request.getDistrict() != null) mother.setDistrict(normalizeText(request.getDistrict()));
+        if (request.getMohArea() != null) mother.setMohArea(normalizeText(request.getMohArea()));
+        if (request.getLatitude() != null) mother.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null) mother.setLongitude(request.getLongitude());
+
+        return mapUser(userRepository.save(mother));
     }
 
     @Override
@@ -269,7 +265,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
 
         validateAreaSearchRequest(request.getDistrict(), request.getMohArea());
 
-        Set<Role> targetRoles = resolveTargetRoles(requester);
+        Collection<Role> targetRoles = resolveOppositeRolesForSearch(requester);
 
         return userRepository.findByDistrictAndMohAreaAndAnyRole(
                         normalizeText(request.getDistrict()),
@@ -278,7 +274,6 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 )
                 .stream()
                 .filter(user -> !Objects.equals(user.getId(), requesterId))
-                .filter(user -> !isAlreadyAssignedPair(requester, user))
                 .map(this::mapUser)
                 .collect(Collectors.toList());
     }
@@ -290,7 +285,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
 
         validateAreaSearchRequest(request.getDistrict(), request.getMohArea());
 
-        Set<Role> targetRoles = resolveTargetRoles(requester);
+        Collection<Role> targetRoles = resolveOppositeRolesForSearch(requester);
 
         return userRepository.findMappableUsersByDistrictAndMohAreaAndAnyRole(
                         normalizeText(request.getDistrict()),
@@ -299,7 +294,6 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 )
                 .stream()
                 .filter(user -> !Objects.equals(user.getId(), requesterId))
-                .filter(user -> !isAlreadyAssignedPair(requester, user))
                 .map(this::mapUser)
                 .collect(Collectors.toList());
     }
@@ -308,18 +302,17 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         if (district == null || district.isBlank()) {
             throw new RuntimeException("District is required.");
         }
-
         if (mohArea == null || mohArea.isBlank()) {
             throw new RuntimeException("MOH area is required.");
         }
     }
 
-    private Set<Role> resolveTargetRoles(User requester) {
+    private Collection<Role> resolveOppositeRolesForSearch(User requester) {
         boolean requesterIsMidwife = hasRole(requester, Role.MIDWIFE);
         boolean requesterIsMotherSide = hasAnyRole(requester, MOTHER_ROLES);
 
         if (!requesterIsMidwife && !requesterIsMotherSide) {
-            throw new RuntimeException("Only midwives and mother-side users can search.");
+            throw new RuntimeException("User does not belong to a valid connection role.");
         }
 
         if (requesterIsMidwife && requesterIsMotherSide) {
@@ -331,93 +324,146 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
 
     private List<User> resolveTargetsByEmail(String email) {
         if (email == null || email.isBlank()) {
-            throw new RuntimeException("Target email is required when method is EMAIL.");
+            throw new RuntimeException("Target email is required for EMAIL method.");
         }
 
-        User target = userRepository.findByEmail(email.trim())
-                .orElseThrow(() -> new RuntimeException("No user found with email: " + email));
-
-        return List.of(target);
+        return userRepository.findByEmail(email.trim())
+                .map(List::of)
+                .orElse(Collections.emptyList());
     }
 
     private List<User> resolveTargetsByArea(User sender, String area) {
         if (area == null || area.isBlank()) {
-            throw new RuntimeException("Target area is required when method is AREA.");
+            throw new RuntimeException("Target area is required for AREA method.");
         }
 
-        String normalizedArea = normalizeText(area);
-
-        if (hasRole(sender, Role.MIDWIFE)) {
-            return userRepository.findByAreaAndAnyRole(normalizedArea, MOTHER_ROLES);
-        } else {
-            return userRepository.findByAreaAndAnyRole(normalizedArea, MIDWIFE_ROLE);
-        }
+        Collection<Role> targetRoles = hasRole(sender, Role.MIDWIFE) ? MOTHER_ROLES : MIDWIFE_ROLE;
+        return userRepository.findByAreaAndAnyRole(normalizeText(area), targetRoles);
     }
 
     private void validateSenderReceiverPair(User sender, User receiver) {
         boolean senderIsMidwife = hasRole(sender, Role.MIDWIFE);
         boolean receiverIsMidwife = hasRole(receiver, Role.MIDWIFE);
-        boolean senderIsMother = hasAnyRole(sender, MOTHER_ROLES);
-        boolean receiverIsMother = hasAnyRole(receiver, MOTHER_ROLES);
 
-        if (senderIsMidwife && receiverIsMidwife) {
-            throw new RuntimeException("Midwife cannot send connection request to another midwife.");
+        boolean senderIsMotherSide = hasAnyRole(sender, MOTHER_ROLES);
+        boolean receiverIsMotherSide = hasAnyRole(receiver, MOTHER_ROLES);
+
+        if (senderIsMidwife == receiverIsMidwife) {
+            throw new RuntimeException("Connection must happen between a midwife and a mother-side user.");
         }
 
-        if (senderIsMother && receiverIsMother) {
-            throw new RuntimeException("Mother-side users cannot send connection request to another mother-side user.");
-        }
-
-        if (!(senderIsMidwife || senderIsMother) || !(receiverIsMidwife || receiverIsMother)) {
-            throw new RuntimeException("Invalid sender/receiver role combination.");
+        if (senderIsMotherSide == receiverIsMotherSide) {
+            throw new RuntimeException("Connection must happen between opposite roles.");
         }
     }
 
     private boolean isAlreadyAssignedPair(User sender, User receiver) {
         User midwife;
-        User motherUser;
+        User mother;
 
         if (hasRole(sender, Role.MIDWIFE) && hasAnyRole(receiver, MOTHER_ROLES)) {
             midwife = sender;
-            motherUser = receiver;
+            mother = receiver;
         } else if (hasRole(receiver, Role.MIDWIFE) && hasAnyRole(sender, MOTHER_ROLES)) {
             midwife = receiver;
-            motherUser = sender;
+            mother = sender;
         } else {
             return false;
         }
 
-        return motherUser.getAssignedMidwife() != null &&
-                Objects.equals(motherUser.getAssignedMidwife().getId(), midwife.getId());
+        return mother.getAssignedMidwife() != null
+                && Objects.equals(mother.getAssignedMidwife().getId(), midwife.getId());
+    }
+
+    private User getAssignedPatientOrThrow(Long midwifeId, Long motherUserId) {
+        User midwife = getUserOrThrow(midwifeId);
+        User mother = getUserOrThrow(motherUserId);
+
+        if (!hasRole(midwife, Role.MIDWIFE)) {
+            throw new RuntimeException("User is not a midwife.");
+        }
+
+        if (!hasAnyRole(mother, MOTHER_ROLES)) {
+            throw new RuntimeException("Selected user is not a mother-side user.");
+        }
+
+        if (mother.getAssignedMidwife() == null ||
+                !Objects.equals(mother.getAssignedMidwife().getId(), midwifeId)) {
+            throw new RuntimeException("This patient is not assigned to the given midwife.");
+        }
+
+        return mother;
+    }
+
+    private User getUserOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
     }
 
     private ConnectionRequestMethod parseMethod(String method) {
-        if (method == null || method.isBlank()) {
-            throw new RuntimeException("Request method is required.");
-        }
-
         try {
             return ConnectionRequestMethod.valueOf(method.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid request method. Allowed values: EMAIL, AREA");
+        } catch (Exception ex) {
+            throw new RuntimeException("Invalid connection request method. Allowed values: EMAIL, AREA");
         }
-    }
-
-    private User getUserOrThrow(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
     }
 
     private boolean hasRole(User user, Role role) {
         return user.getRoles() != null && user.getRoles().contains(role);
     }
 
-    private boolean hasAnyRole(User user, Set<Role> roles) {
+    private boolean hasAnyRole(User user, Collection<Role> roles) {
         return user.getRoles() != null && user.getRoles().stream().anyMatch(roles::contains);
     }
 
     private String normalizeText(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private UserResponseDto mapUser(User user) {
+        return new UserResponseDto(
+                user.getId(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail(),
+                user.getPhoneNumber(),
+                user.getDateOfBirth(),
+                user.getNationalIdNumber(),
+                user.getAddress(),
+                user.getProfileImageUrl(),
+                user.getArea(),
+                user.getDistrict(),
+                user.getMohArea(),
+                user.getLatitude(),
+                user.getLongitude(),
+                user.getAssignedMidwife() != null ? user.getAssignedMidwife().getId() : null,
+                user.getRoles()
+        );
+    }
+
+    private AssignedPatientDetailResponseDto mapAssignedPatientDetail(User user) {
+        return AssignedPatientDetailResponseDto.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .dateOfBirth(user.getDateOfBirth())
+                .nationalIdNumber(user.getNationalIdNumber())
+                .address(user.getAddress())
+                .profileImageUrl(user.getProfileImageUrl())
+                .area(user.getArea())
+                .district(user.getDistrict())
+                .mohArea(user.getMohArea())
+                .latitude(user.getLatitude())
+                .longitude(user.getLongitude())
+                .assignedMidwifeId(user.getAssignedMidwife() != null ? user.getAssignedMidwife().getId() : null)
+                .roles(user.getRoles())
+                .canEditProfile(true)
+                .canViewHealthRecords(true)
+                .canViewFertility(true)
+                .canViewRiskPredictions(true)
+                .build();
     }
 
     private ConnectionRequestResponseDto mapRequest(MidwifeMotherRequest entity) {
@@ -440,26 +486,5 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 .createdAt(entity.getCreatedAt())
                 .respondedAt(entity.getRespondedAt())
                 .build();
-    }
-
-    private UserResponseDto mapUser(User user) {
-        return new UserResponseDto(
-                user.getId(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getEmail(),
-                user.getPhoneNumber(),
-                user.getDateOfBirth(),
-                user.getNationalIdNumber(),
-                user.getAddress(),
-                user.getProfileImageUrl(),
-                user.getArea(),
-                user.getDistrict(),
-                user.getMohArea(),
-                user.getLatitude(),
-                user.getLongitude(),
-                user.getAssignedMidwife() != null ? user.getAssignedMidwife().getId() : null,
-                user.getRoles()
-        );
     }
 }

@@ -28,7 +28,7 @@ public class FertilityController {
             Authentication authentication,
             @RequestBody FertilityRequestDto request
     ) {
-        String userSub = authentication.getName(); // email
+        String userSub = authentication.getName();
         FertilityResponseDto response = service.calculateAndSave(userSub, request);
         return ResponseEntity.ok(response);
     }
@@ -48,7 +48,14 @@ public class FertilityController {
                 data.getSafeEnd1(),
                 data.getSafeStart2(),
                 data.getSafeEnd2()
-
         ));
+    }
+
+    @GetMapping("/midwife/{midwifeId}/patient/{patientId}/latest")
+    public ResponseEntity<FertilityResponseDto> getLatestForAssignedPatient(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId
+    ) {
+        return ResponseEntity.ok(service.getLatestForAssignedPatient(midwifeId, patientId));
     }
 }

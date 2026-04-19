@@ -24,16 +24,4 @@ public class HealthRecordResponseDto {
     private String categoryName;
     private UUID categoryId;
     private List<RecordFileResponseDto> files;
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class RecordFileResponseDto {
-        private UUID id;
-        private String fileName;
-        private String fileType;
-        private String fileUrl;
-        private Long fileSize;
-    }
 }

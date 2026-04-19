@@ -2,6 +2,7 @@ package com.example.MathruAI_BackEnd.controller.connection;
 
 import com.example.MathruAI_BackEnd.dto.connection.AreaMapSearchRequestDto;
 import com.example.MathruAI_BackEnd.dto.connection.AreaSearchRequestDto;
+import com.example.MathruAI_BackEnd.dto.connection.AssignedPatientDetailResponseDto;
 import com.example.MathruAI_BackEnd.dto.connection.AssignedUserProfileUpdateRequestDto;
 import com.example.MathruAI_BackEnd.dto.connection.ConnectionRequestResponseDto;
 import com.example.MathruAI_BackEnd.dto.connection.SendConnectionRequestDto;
@@ -57,6 +58,14 @@ public class MidwifeConnectionController {
     @GetMapping("/midwife/{midwifeId}/assigned-users")
     public ResponseEntity<List<UserResponseDto>> getAssignedUsersForMidwife(@PathVariable Long midwifeId) {
         return ResponseEntity.ok(connectionService.getAssignedUsersForMidwife(midwifeId));
+    }
+
+    @GetMapping("/midwife/{midwifeId}/assigned-users/{motherUserId}")
+    public ResponseEntity<AssignedPatientDetailResponseDto> getAssignedPatientDetail(
+            @PathVariable Long midwifeId,
+            @PathVariable Long motherUserId
+    ) {
+        return ResponseEntity.ok(connectionService.getAssignedPatientDetail(midwifeId, motherUserId));
     }
 
     @GetMapping("/mother/{motherUserId}/assigned-midwife")

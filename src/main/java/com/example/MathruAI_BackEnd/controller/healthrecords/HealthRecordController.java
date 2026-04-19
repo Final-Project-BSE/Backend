@@ -3,22 +3,22 @@ package com.example.MathruAI_BackEnd.controller.healthrecords;
 import com.example.MathruAI_BackEnd.dto.healthrecords.HealthCategoryResponseDto;
 import com.example.MathruAI_BackEnd.dto.healthrecords.HealthRecordRequestDto;
 import com.example.MathruAI_BackEnd.dto.healthrecords.HealthRecordResponseDto;
+import com.example.MathruAI_BackEnd.service.impl.healthrecords.FileUploadService;
 import com.example.MathruAI_BackEnd.service.interservice.healthrecords.HealthRecordServiceInter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-import com.example.MathruAI_BackEnd.service.impl.healthrecords.FileUploadService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-
 
 @RestController
 @RequestMapping("/api/health-records")
@@ -75,26 +75,55 @@ public class HealthRecordController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/midwife/{midwifeId}/patient/{patientId}/categories")
+    @Operation(summary = "Get patient categories for midwife", description = "Fetch health categories for an assigned patient")
+    public ResponseEntity<List<HealthCategoryResponseDto>> getPatientCategoriesForMidwife(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId
+    ) {
+        return ResponseEntity.ok(healthRecordService.getCategoriesForAssignedPatient(midwifeId, patientId));
+    }
+
+    @GetMapping("/midwife/{midwifeId}/patient/{patientId}/category/{categoryId}")
+    @Operation(summary = "Get patient records by category for midwife", description = "Fetch patient records in one category for an assigned patient")
+    public ResponseEntity<List<HealthRecordResponseDto>> getPatientRecordsByCategoryForMidwife(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId,
+            @PathVariable UUID categoryId
+    ) {
+        return ResponseEntity.ok(
+                healthRecordService.getRecordsByCategoryForAssignedPatient(midwifeId, patientId, categoryId)
+        );
+    }
+
+    @GetMapping("/midwife/{midwifeId}/patient/{patientId}/record/{recordId}")
+    @Operation(summary = "Get patient record detail for midwife", description = "Fetch one record detail for an assigned patient")
+    public ResponseEntity<HealthRecordResponseDto> getPatientRecordDetailForMidwife(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId,
+            @PathVariable UUID recordId
+    ) {
+        return ResponseEntity.ok(
+                healthRecordService.getRecordDetailForAssignedPatient(midwifeId, patientId, recordId)
+        );
+    }
+
     @GetMapping("/files/{fileName:.+}")
-    @Operation(summary = "Get file", description = "Serve a health record file securely")
-    public ResponseEntity<Resource> getFile(@PathVariable String fileName, HttpServletRequest request) {
-        try {
-            Resource resource = fileUploadService.loadFileAsResource(fileName);
-            String contentType = null;
-            try {
-                contentType = request.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
-            } catch (IOException ex) {
-                // Ignore
-            }
-            if (contentType == null) {
-                contentType = "application/octet-stream";
-            }
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
-                    .body(resource);
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
+    @Operation(summary = "Serve uploaded file", description = "Returns uploaded file securely")
+    public ResponseEntity<Resource> serveFile(
+            @PathVariable String fileName,
+            HttpServletRequest request
+    ) throws Exception {
+        Resource resource = fileUploadService.loadFileAsResource(fileName);
+
+        String contentType = request.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
+        if (contentType == null) {
+            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
         }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
     }
 }

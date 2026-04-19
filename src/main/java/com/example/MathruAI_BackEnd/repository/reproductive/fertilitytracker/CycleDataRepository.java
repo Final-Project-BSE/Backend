@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface CycleDataRepository extends JpaRepository<CycleData, Long> {
     Optional<CycleData> findTopByUserSubOrderByIdDesc(String userSub);
+    void deleteByUserId(Long userId);
 }

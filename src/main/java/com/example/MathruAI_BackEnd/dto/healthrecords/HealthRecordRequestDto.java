@@ -14,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 public class HealthRecordRequestDto {
     private String name;
-    private String date; // String to handle different format from frontend if needed, or LocalDate
+    private String date;
     private String description;
     private List<MultipartFile> files;
 }

@@ -12,5 +12,15 @@ public class UserUpdateRequest {
     private String lastName;
     private String phoneNumber;
     private LocalDate dateOfBirth;
-    private Set<Role> roles; // remove if you don't want role editing
+    private String nationalIdNumber;
+    private String address;
+    private String profileImageUrl;
+
+    private String area;
+    private String district;
+    private String mohArea;
+    private Double latitude;
+    private Double longitude;
+
+    private Set<Role> roles;
 }

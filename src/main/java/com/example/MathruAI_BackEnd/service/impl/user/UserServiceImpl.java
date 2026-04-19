@@ -5,71 +5,69 @@ import com.example.MathruAI_BackEnd.dto.userDto.UserUpdateRequest;
 import com.example.MathruAI_BackEnd.entity.User;
 import com.example.MathruAI_BackEnd.repository.UserRepository;
 import com.example.MathruAI_BackEnd.service.interservice.user.UserService;
-import org.springframework.http.HttpStatus;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
-    public UserServiceImpl(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
-
-    private UserResponseDto toDto(User u) {
-        return new UserResponseDto(
-                u.getId(),
-                u.getFirstName(),
-                u.getLastName(),
-                u.getEmail(),
-                u.getPhoneNumber(),
-                u.getDateOfBirth(),
-                u.getRoles()
-        );
-    }
-
     @Override
     public List<UserResponseDto> getAllUsers() {
-        return userRepository.findAll().stream().map(this::toDto).toList();
+        return userRepository.findAll()
+                .stream()
+                .map(this::mapUser)
+                .toList();
     }
 
     @Override
     public UserResponseDto getUserById(Long id) {
-        User u = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        return toDto(u);
+        return mapUser(getUserOrThrow(id));
     }
 
     @Override
     public UserResponseDto updateUser(Long id, UserUpdateRequest request) {
-        User u = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        User user = getUserOrThrow(id);
 
-        if (request.getFirstName() != null) u.setFirstName(request.getFirstName());
-        if (request.getLastName() != null) u.setLastName(request.getLastName());
-        if (request.getPhoneNumber() != null) u.setPhoneNumber(request.getPhoneNumber());
-        if (request.getDateOfBirth() != null) u.setDateOfBirth(request.getDateOfBirth());
-        if (request.getRoles() != null) u.setRoles(request.getRoles());
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
+        if (request.getPhoneNumber() != null) user.setPhoneNumber(request.getPhoneNumber());
+        if (request.getDateOfBirth() != null) user.setDateOfBirth(request.getDateOfBirth());
+        if (request.getNationalIdNumber() != null) user.setNationalIdNumber(request.getNationalIdNumber());
+        if (request.getAddress() != null) user.setAddress(request.getAddress());
+        if (request.getProfileImageUrl() != null) user.setProfileImageUrl(request.getProfileImageUrl());
+        if (request.getArea() != null) user.setArea(request.getArea());
+        if (request.getDistrict() != null) user.setDistrict(request.getDistrict().trim());
+        if (request.getMohArea() != null) user.setMohArea(request.getMohArea().trim());
+        if (request.getLatitude() != null) user.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null) user.setLongitude(request.getLongitude());
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) user.setRoles(request.getRoles());
 
-        return toDto(userRepository.save(u));
+        return mapUser(userRepository.save(user));
     }
 
     @Override
     public void deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
-        }
         userRepository.deleteById(id);
     }
 
+    @Override
     public UserResponseDto getByEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+        return userRepository.findByEmail(email)
+                .map(this::mapUser)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+    }
 
+    private User getUserOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+    }
+
+    private UserResponseDto mapUser(User user) {
         return new UserResponseDto(
                 user.getId(),
                 user.getFirstName(),
@@ -77,6 +75,15 @@ public class UserServiceImpl implements UserService {
                 user.getEmail(),
                 user.getPhoneNumber(),
                 user.getDateOfBirth(),
+                user.getNationalIdNumber(),
+                user.getAddress(),
+                user.getProfileImageUrl(),
+                user.getArea(),
+                user.getDistrict(),
+                user.getMohArea(),
+                user.getLatitude(),
+                user.getLongitude(),
+                user.getAssignedMidwife() != null ? user.getAssignedMidwife().getId() : null,
                 user.getRoles()
         );
     }

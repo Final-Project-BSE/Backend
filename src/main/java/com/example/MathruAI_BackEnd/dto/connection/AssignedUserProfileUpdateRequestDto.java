@@ -1,15 +1,11 @@
-package com.example.MathruAI_BackEnd.dto.ProfileDto;
+package com.example.MathruAI_BackEnd.dto.connection;
 
-import lombok.*;
+import lombok.Data;
 
 import java.time.LocalDate;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class ProfileUpdateRequestDto {
+@Data
+public class AssignedUserProfileUpdateRequestDto {
     private String firstName;
     private String lastName;
     private String phoneNumber;

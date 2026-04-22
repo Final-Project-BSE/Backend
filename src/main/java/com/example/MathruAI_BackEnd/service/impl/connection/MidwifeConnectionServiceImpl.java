@@ -74,7 +74,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 continue;
             }
 
-            if (hasAnyRequestBetween(sender.getId(), receiver.getId())) {
+            if (hasActivePendingRequestBetween(sender.getId(), receiver.getId())) {
                 continue;
             }
 
@@ -164,6 +164,67 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         entity.setRespondedAt(LocalDateTime.now());
 
         return mapRequest(requestRepository.save(entity));
+    }
+
+    @Override
+    public ConnectionRequestResponseDto cancelRequest(Long requestId, Long requesterUserId) {
+        MidwifeMotherRequest entity = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Connection request not found with id: " + requestId));
+
+        if (!Objects.equals(entity.getSender().getId(), requesterUserId)) {
+            throw new RuntimeException("Only the sender can cancel this request.");
+        }
+
+        if (entity.getStatus() != ConnectionRequestStatus.PENDING) {
+            throw new RuntimeException("Only pending requests can be cancelled.");
+        }
+
+        entity.setStatus(ConnectionRequestStatus.CANCELLED);
+        entity.setRespondedAt(LocalDateTime.now());
+
+        return mapRequest(requestRepository.save(entity));
+    }
+
+    @Override
+    public void cancelAssignedMidwifeForMother(Long motherUserId, Long requesterUserId) {
+        User mother = getUserOrThrow(motherUserId);
+
+        if (!hasAnyRole(mother, MOTHER_ROLES)) {
+            throw new RuntimeException("User is not a mother-side user.");
+        }
+
+        if (!Objects.equals(mother.getId(), requesterUserId)) {
+            throw new RuntimeException("Only the mother-side user can cancel their assigned midwife.");
+        }
+
+        if (mother.getAssignedMidwife() == null) {
+            throw new RuntimeException("No midwife is assigned to this user.");
+        }
+
+        mother.setAssignedMidwife(null);
+        userRepository.save(mother);
+    }
+
+    @Override
+    public void cancelAssignedMotherForMidwife(Long midwifeId, Long motherUserId) {
+        User midwife = getUserOrThrow(midwifeId);
+        User mother = getUserOrThrow(motherUserId);
+
+        if (!hasRole(midwife, Role.MIDWIFE)) {
+            throw new RuntimeException("User is not a midwife.");
+        }
+
+        if (!hasAnyRole(mother, MOTHER_ROLES)) {
+            throw new RuntimeException("Selected user is not a mother-side user.");
+        }
+
+        if (mother.getAssignedMidwife() == null ||
+                !Objects.equals(mother.getAssignedMidwife().getId(), midwifeId)) {
+            throw new RuntimeException("This mother is not assigned to the given midwife.");
+        }
+
+        mother.setAssignedMidwife(null);
+        userRepository.save(mother);
     }
 
     @Override
@@ -270,7 +331,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 )
                 .stream()
                 .filter(user -> !Objects.equals(user.getId(), requesterId))
-                .filter(user -> !hasAnyRequestBetween(requesterId, user.getId()))
+                .filter(user -> !hasActivePendingRequestBetween(requesterId, user.getId()))
                 .filter(user -> !isAlreadyAssignedPair(requester, user))
                 .map(this::mapUser)
                 .collect(Collectors.toList());
@@ -292,7 +353,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 )
                 .stream()
                 .filter(user -> !Objects.equals(user.getId(), requesterId))
-                .filter(user -> !hasAnyRequestBetween(requesterId, user.getId()))
+                .filter(user -> !hasActivePendingRequestBetween(requesterId, user.getId()))
                 .filter(user -> !isAlreadyAssignedPair(requester, user))
                 .map(this::mapUser)
                 .collect(Collectors.toList());
@@ -341,7 +402,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         return userRepository.findByAreaAndAnyRole(normalizeText(area), targetRoles)
                 .stream()
                 .filter(user -> !Objects.equals(user.getId(), sender.getId()))
-                .filter(user -> !hasAnyRequestBetween(sender.getId(), user.getId()))
+                .filter(user -> !hasActivePendingRequestBetween(sender.getId(), user.getId()))
                 .filter(user -> !isAlreadyAssignedPair(sender, user))
                 .toList();
     }
@@ -362,12 +423,14 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         }
     }
 
-    private boolean hasAnyRequestBetween(Long userAId, Long userBId) {
-        return requestRepository.existsBySenderIdAndReceiverIdOrReceiverIdAndSenderId(
+    private boolean hasActivePendingRequestBetween(Long userAId, Long userBId) {
+        return requestRepository.existsBySenderIdAndReceiverIdAndStatusOrReceiverIdAndSenderIdAndStatus(
                 userAId,
                 userBId,
+                ConnectionRequestStatus.PENDING,
                 userAId,
-                userBId
+                userBId,
+                ConnectionRequestStatus.PENDING
         );
     }
 

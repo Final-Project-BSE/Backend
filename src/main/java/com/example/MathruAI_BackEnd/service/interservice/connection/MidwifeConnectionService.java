@@ -18,11 +18,19 @@ public interface MidwifeConnectionService {
 
     ConnectionRequestResponseDto rejectRequest(Long requestId, Long approverUserId);
 
+    ConnectionRequestResponseDto cancelRequest(Long requestId, Long requesterUserId);
+
+    void cancelAssignedMidwifeForMother(Long motherUserId, Long requesterUserId);
+
+    void cancelAssignedMotherForMidwife(Long midwifeId, Long motherUserId);
+
     List<ConnectionRequestResponseDto> getSentRequests(Long userId);
 
     List<ConnectionRequestResponseDto> getReceivedRequests(Long userId);
 
     List<UserResponseDto> getAssignedUsersForMidwife(Long midwifeId);
+
+    AssignedPatientDetailResponseDto getAssignedPatientDetail(Long midwifeId, Long motherUserId);
 
     UserResponseDto getAssignedMidwifeForMother(Long motherUserId);
 
@@ -32,15 +40,7 @@ public interface MidwifeConnectionService {
             AssignedUserProfileUpdateRequestDto request
     );
 
-    List<UserResponseDto> searchUsersByDistrictAndMohArea(
-            Long requesterId,
-            AreaSearchRequestDto request
-    );
+    List<UserResponseDto> searchUsersByDistrictAndMohArea(Long requesterId, AreaSearchRequestDto request);
 
-    List<UserResponseDto> searchMappableUsersByDistrictAndMohArea(
-            Long requesterId,
-            AreaMapSearchRequestDto request
-    );
-
-    AssignedPatientDetailResponseDto getAssignedPatientDetail(Long midwifeId, Long motherUserId);
+    List<UserResponseDto> searchMappableUsersByDistrictAndMohArea(Long requesterId, AreaMapSearchRequestDto request);
 }

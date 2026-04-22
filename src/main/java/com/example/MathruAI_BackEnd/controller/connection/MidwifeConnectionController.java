@@ -45,6 +45,32 @@ public class MidwifeConnectionController {
         return ResponseEntity.ok(connectionService.rejectRequest(requestId, approverUserId));
     }
 
+    @PatchMapping("/{requestId}/cancel/{requesterUserId}")
+    public ResponseEntity<ConnectionRequestResponseDto> cancelRequest(
+            @PathVariable Long requestId,
+            @PathVariable Long requesterUserId
+    ) {
+        return ResponseEntity.ok(connectionService.cancelRequest(requestId, requesterUserId));
+    }
+
+    @DeleteMapping("/mother/{motherUserId}/assigned-midwife/{requesterUserId}")
+    public ResponseEntity<String> cancelAssignedMidwifeForMother(
+            @PathVariable Long motherUserId,
+            @PathVariable Long requesterUserId
+    ) {
+        connectionService.cancelAssignedMidwifeForMother(motherUserId, requesterUserId);
+        return ResponseEntity.ok("Assigned midwife cancelled successfully.");
+    }
+
+    @DeleteMapping("/midwife/{midwifeId}/assigned-users/{motherUserId}")
+    public ResponseEntity<String> cancelAssignedMotherForMidwife(
+            @PathVariable Long midwifeId,
+            @PathVariable Long motherUserId
+    ) {
+        connectionService.cancelAssignedMotherForMidwife(midwifeId, motherUserId);
+        return ResponseEntity.ok("Assigned mother cancelled successfully.");
+    }
+
     @GetMapping("/sent/{userId}")
     public ResponseEntity<List<ConnectionRequestResponseDto>> getSentRequests(@PathVariable Long userId) {
         return ResponseEntity.ok(connectionService.getSentRequests(userId));
@@ -92,10 +118,6 @@ public class MidwifeConnectionController {
         );
     }
 
-    /**
-     * Same role logic as normal search, but only returns users
-     * who have latitude + longitude for map display.
-     */
     @PostMapping("/map-search/{requesterId}")
     public ResponseEntity<List<UserResponseDto>> searchMappableUsersByDistrictAndMohArea(
             @PathVariable Long requesterId,

@@ -74,11 +74,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 continue;
             }
 
-            if (requestRepository.existsBySenderIdAndReceiverIdAndStatus(
-                    sender.getId(),
-                    receiver.getId(),
-                    ConnectionRequestStatus.PENDING
-            )) {
+            if (hasAnyRequestBetween(sender.getId(), receiver.getId())) {
                 continue;
             }
 
@@ -274,6 +270,8 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 )
                 .stream()
                 .filter(user -> !Objects.equals(user.getId(), requesterId))
+                .filter(user -> !hasAnyRequestBetween(requesterId, user.getId()))
+                .filter(user -> !isAlreadyAssignedPair(requester, user))
                 .map(this::mapUser)
                 .collect(Collectors.toList());
     }
@@ -294,6 +292,8 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 )
                 .stream()
                 .filter(user -> !Objects.equals(user.getId(), requesterId))
+                .filter(user -> !hasAnyRequestBetween(requesterId, user.getId()))
+                .filter(user -> !isAlreadyAssignedPair(requester, user))
                 .map(this::mapUser)
                 .collect(Collectors.toList());
     }
@@ -338,7 +338,12 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         }
 
         Collection<Role> targetRoles = hasRole(sender, Role.MIDWIFE) ? MOTHER_ROLES : MIDWIFE_ROLE;
-        return userRepository.findByAreaAndAnyRole(normalizeText(area), targetRoles);
+        return userRepository.findByAreaAndAnyRole(normalizeText(area), targetRoles)
+                .stream()
+                .filter(user -> !Objects.equals(user.getId(), sender.getId()))
+                .filter(user -> !hasAnyRequestBetween(sender.getId(), user.getId()))
+                .filter(user -> !isAlreadyAssignedPair(sender, user))
+                .toList();
     }
 
     private void validateSenderReceiverPair(User sender, User receiver) {
@@ -355,6 +360,15 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         if (senderIsMotherSide == receiverIsMotherSide) {
             throw new RuntimeException("Connection must happen between opposite roles.");
         }
+    }
+
+    private boolean hasAnyRequestBetween(Long userAId, Long userBId) {
+        return requestRepository.existsBySenderIdAndReceiverIdOrReceiverIdAndSenderId(
+                userAId,
+                userBId,
+                userAId,
+                userBId
+        );
     }
 
     private boolean isAlreadyAssignedPair(User sender, User receiver) {

@@ -19,7 +19,20 @@ public interface MidwifeMotherRequestRepository extends JpaRepository<MidwifeMot
             ConnectionRequestStatus status
     );
 
-    boolean existsBySenderIdAndReceiverIdAndStatus(Long senderId, Long receiverId, ConnectionRequestStatus status);
+    boolean existsBySenderIdAndReceiverIdAndStatus(
+            Long senderId,
+            Long receiverId,
+            ConnectionRequestStatus status
+    );
 
     boolean existsBySenderIdAndReceiverId(Long senderId, Long receiverId);
+
+    boolean existsByReceiverIdAndSenderId(Long receiverId, Long senderId);
+
+    boolean existsBySenderIdAndReceiverIdOrReceiverIdAndSenderId(
+            Long senderId,
+            Long receiverId,
+            Long reverseSenderId,
+            Long reverseReceiverId
+    );
 }

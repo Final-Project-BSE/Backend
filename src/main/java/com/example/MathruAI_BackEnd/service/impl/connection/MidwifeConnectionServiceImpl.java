@@ -5,6 +5,7 @@ import com.example.MathruAI_BackEnd.dto.connection.AreaSearchRequestDto;
 import com.example.MathruAI_BackEnd.dto.connection.AssignedPatientDetailResponseDto;
 import com.example.MathruAI_BackEnd.dto.connection.AssignedUserProfileUpdateRequestDto;
 import com.example.MathruAI_BackEnd.dto.connection.ConnectionRequestResponseDto;
+import com.example.MathruAI_BackEnd.dto.connection.MapUserResponseDto;
 import com.example.MathruAI_BackEnd.dto.connection.SendConnectionRequestDto;
 import com.example.MathruAI_BackEnd.dto.userDto.UserResponseDto;
 import com.example.MathruAI_BackEnd.entity.Role;
@@ -359,6 +360,19 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<MapUserResponseDto> getAllMappableOppositeUsers(Long requesterId) {
+        User requester = getUserOrThrow(requesterId);
+        Collection<Role> targetRoles = resolveOppositeRolesForSearch(requester);
+
+        return userRepository.findAllMappableUsersByAnyRole(targetRoles)
+                .stream()
+                .filter(user -> !Objects.equals(user.getId(), requesterId))
+                .map(this::mapMapUser)
+                .collect(Collectors.toList());
+    }
+
     private void validateAreaSearchRequest(String district, String mohArea) {
         if (district == null || district.isBlank()) {
             throw new RuntimeException("District is required.");
@@ -516,6 +530,35 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 user.getAssignedMidwife() != null ? user.getAssignedMidwife().getId() : null,
                 user.getRoles()
         );
+    }
+
+    private MapUserResponseDto mapMapUser(User user) {
+        String assignedMidwifeName = null;
+
+        if (user.getAssignedMidwife() != null) {
+            String firstName = user.getAssignedMidwife().getFirstName() == null ? "" : user.getAssignedMidwife().getFirstName().trim();
+            String lastName = user.getAssignedMidwife().getLastName() == null ? "" : user.getAssignedMidwife().getLastName().trim();
+            assignedMidwifeName = (firstName + " " + lastName).trim();
+            if (assignedMidwifeName.isBlank()) {
+                assignedMidwifeName = user.getAssignedMidwife().getEmail();
+            }
+        }
+
+        return MapUserResponseDto.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
+                .address(user.getAddress())
+                .area(user.getArea())
+                .district(user.getDistrict())
+                .mohArea(user.getMohArea())
+                .latitude(user.getLatitude())
+                .longitude(user.getLongitude())
+                .assignedMidwifeId(user.getAssignedMidwife() != null ? user.getAssignedMidwife().getId() : null)
+                .assignedMidwifeName(assignedMidwifeName)
+                .roles(user.getRoles())
+                .build();
     }
 
     private AssignedPatientDetailResponseDto mapAssignedPatientDetail(User user) {

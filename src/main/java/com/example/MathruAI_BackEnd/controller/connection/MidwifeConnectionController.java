@@ -5,6 +5,7 @@ import com.example.MathruAI_BackEnd.dto.connection.AreaSearchRequestDto;
 import com.example.MathruAI_BackEnd.dto.connection.AssignedPatientDetailResponseDto;
 import com.example.MathruAI_BackEnd.dto.connection.AssignedUserProfileUpdateRequestDto;
 import com.example.MathruAI_BackEnd.dto.connection.ConnectionRequestResponseDto;
+import com.example.MathruAI_BackEnd.dto.connection.MapUserResponseDto;
 import com.example.MathruAI_BackEnd.dto.connection.SendConnectionRequestDto;
 import com.example.MathruAI_BackEnd.dto.userDto.UserResponseDto;
 import com.example.MathruAI_BackEnd.service.interservice.connection.MidwifeConnectionService;
@@ -126,5 +127,12 @@ public class MidwifeConnectionController {
         return ResponseEntity.ok(
                 connectionService.searchMappableUsersByDistrictAndMohArea(requesterId, request)
         );
+    }
+
+    @GetMapping("/map/all/{requesterId}")
+    public ResponseEntity<List<MapUserResponseDto>> getAllMappableOppositeUsers(
+            @PathVariable Long requesterId
+    ) {
+        return ResponseEntity.ok(connectionService.getAllMappableOppositeUsers(requesterId));
     }
 }

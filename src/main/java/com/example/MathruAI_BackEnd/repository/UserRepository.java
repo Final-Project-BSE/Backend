@@ -69,6 +69,17 @@ public interface UserRepository extends JpaRepository<User, Long> {
     );
 
     @Query("""
+            select distinct u
+            from User u
+            join u.roles r
+            where u.latitude is not null
+              and u.longitude is not null
+              and r in :roles
+            order by u.firstName asc, u.lastName asc
+            """)
+    List<User> findAllMappableUsersByAnyRole(Collection<Role> roles);
+
+    @Query("""
             select distinct u.district
             from User u
             where u.district is not null

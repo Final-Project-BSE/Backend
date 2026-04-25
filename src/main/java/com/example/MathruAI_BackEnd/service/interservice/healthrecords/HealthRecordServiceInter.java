@@ -9,10 +9,24 @@ import java.util.List;
 import java.util.UUID;
 
 public interface HealthRecordServiceInter {
+
     List<HealthCategoryResponseDto> getAllCategoriesWithCounts(String email);
+
     List<HealthRecordResponseDto> getRecordsByCategory(String email, UUID categoryId);
-    HealthRecordResponseDto createRecord(String email, UUID categoryId, HealthRecordRequestDto request) throws IOException;
+
+    HealthRecordResponseDto createRecord(String email, UUID categoryId, HealthRecordRequestDto request)
+            throws IOException;
+
     HealthRecordResponseDto getRecordDetails(UUID recordId);
-    HealthRecordResponseDto updateRecord(UUID recordId, HealthRecordRequestDto request) throws IOException;
+
+    HealthRecordResponseDto updateRecord(UUID recordId, HealthRecordRequestDto request)
+            throws IOException;
+
     void deleteRecord(UUID recordId) throws IOException;
+
+    List<HealthCategoryResponseDto> getCategoriesForAssignedPatient(Long midwifeId, Long patientId);
+
+    List<HealthRecordResponseDto> getRecordsByCategoryForAssignedPatient(Long midwifeId, Long patientId, UUID categoryId);
+
+    HealthRecordResponseDto getRecordDetailForAssignedPatient(Long midwifeId, Long patientId, UUID recordId);
 }

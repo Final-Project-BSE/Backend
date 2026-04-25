@@ -4,6 +4,7 @@ import com.example.MathruAI_BackEnd.entity.Role;
 import com.example.MathruAI_BackEnd.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -66,4 +67,35 @@ public interface UserRepository extends JpaRepository<User, Long> {
             String mohArea,
             Collection<Role> roles
     );
+
+    @Query("""
+            select distinct u
+            from User u
+            join u.roles r
+            where u.latitude is not null
+              and u.longitude is not null
+              and r in :roles
+            order by u.firstName asc, u.lastName asc
+            """)
+    List<User> findAllMappableUsersByAnyRole(Collection<Role> roles);
+
+    @Query("""
+            select distinct u.district
+            from User u
+            where u.district is not null
+              and trim(u.district) <> ''
+            order by u.district asc
+            """)
+    List<String> findDistinctDistricts();
+
+    @Query("""
+            select distinct u.mohArea
+            from User u
+            where u.district is not null
+              and lower(u.district) = lower(:district)
+              and u.mohArea is not null
+              and trim(u.mohArea) <> ''
+            order by u.mohArea asc
+            """)
+    List<String> findDistinctMohAreasByDistrict(@Param("district") String district);
 }

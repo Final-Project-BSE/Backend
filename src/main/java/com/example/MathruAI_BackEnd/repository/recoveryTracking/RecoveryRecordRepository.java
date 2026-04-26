@@ -1,6 +1,6 @@
-package com.example.MathruAI_BackEnd.repository;
+package com.example.MathruAI_BackEnd.repository.recoveryTracking;
 
-import com.example.MathruAI_BackEnd.entity.RecoveryRecord;
+import com.example.MathruAI_BackEnd.entity.recoveryTracking.RecoveryRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

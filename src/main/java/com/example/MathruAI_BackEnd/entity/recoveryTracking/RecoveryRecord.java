@@ -1,4 +1,4 @@
-package com.example.MathruAI_BackEnd.entity;
+package com.example.MathruAI_BackEnd.entity.recoveryTracking;
 
 import jakarta.persistence.*;
 import lombok.*;

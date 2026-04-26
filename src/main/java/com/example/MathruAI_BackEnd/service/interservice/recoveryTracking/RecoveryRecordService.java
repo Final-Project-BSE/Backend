@@ -1,7 +1,7 @@
-package com.example.MathruAI_BackEnd.service;
+package com.example.MathruAI_BackEnd.service.interservice.recoveryTracking;
 
-import com.example.MathruAI_BackEnd.dto.recovery.RecoveryRecordRequestDto;
-import com.example.MathruAI_BackEnd.dto.recovery.RecoveryRecordResponseDto;
+import com.example.MathruAI_BackEnd.dto.recoveryTracking.RecoveryRecordRequestDto;
+import com.example.MathruAI_BackEnd.dto.recoveryTracking.RecoveryRecordResponseDto;
 
 import java.util.List;
 

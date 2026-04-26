@@ -1,10 +1,10 @@
-package com.example.MathruAI_BackEnd.service.impl;
+package com.example.MathruAI_BackEnd.service.impl.recoveryTracking;
 
-import com.example.MathruAI_BackEnd.dto.recovery.RecoveryRecordRequestDto;
-import com.example.MathruAI_BackEnd.dto.recovery.RecoveryRecordResponseDto;
-import com.example.MathruAI_BackEnd.entity.RecoveryRecord;
-import com.example.MathruAI_BackEnd.repository.RecoveryRecordRepository;
-import com.example.MathruAI_BackEnd.service.RecoveryRecordService;
+import com.example.MathruAI_BackEnd.dto.recoveryTracking.RecoveryRecordRequestDto;
+import com.example.MathruAI_BackEnd.dto.recoveryTracking.RecoveryRecordResponseDto;
+import com.example.MathruAI_BackEnd.entity.recoveryTracking.RecoveryRecord;
+import com.example.MathruAI_BackEnd.repository.recoveryTracking.RecoveryRecordRepository;
+import com.example.MathruAI_BackEnd.service.interservice.recoveryTracking.RecoveryRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

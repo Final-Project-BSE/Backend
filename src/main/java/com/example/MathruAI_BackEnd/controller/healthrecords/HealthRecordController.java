@@ -126,4 +126,30 @@ public class HealthRecordController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
     }
+
+    @PostMapping(value = "/midwife/{midwifeId}/patient/{patientId}/category/{categoryId}", consumes = "multipart/form-data")
+    @Operation(summary = "Create patient record for midwife", description = "Create a health record for an assigned patient")
+    public ResponseEntity<HealthRecordResponseDto> createPatientRecordForMidwife(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId,
+            @PathVariable UUID categoryId,
+            @ModelAttribute HealthRecordRequestDto request
+    ) throws IOException {
+        return ResponseEntity.ok(
+                healthRecordService.createRecordForAssignedPatient(midwifeId, patientId, categoryId, request)
+        );
+    }
+
+    @DeleteMapping("/midwife/{midwifeId}/patient/{patientId}/record/{recordId}")
+    @Operation(summary = "Delete patient record for midwife", description = "Delete a health record for an assigned patient")
+    public ResponseEntity<Void> deletePatientRecordForMidwife(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId,
+            @PathVariable UUID recordId
+    ) throws IOException {
+        healthRecordService.deleteRecordForAssignedPatient(midwifeId, patientId, recordId);
+        return ResponseEntity.noContent().build();
+    }
+
+
 }

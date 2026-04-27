@@ -8,14 +8,18 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Checklist {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long midwifeId;
+
     private String name;
-    private int quantity;
-    private String category; // Mother / Baby
-    private boolean checked;
+
+    private Integer quantity;
+
+    private String category;
 }

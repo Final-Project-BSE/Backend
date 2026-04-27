@@ -2,9 +2,8 @@ package com.example.MathruAI_BackEnd.controller.thriposha;
 
 import com.example.MathruAI_BackEnd.dto.triposhaDto.TriposhaDTO;
 import com.example.MathruAI_BackEnd.entity.triposha.TriposhaRecord;
-import com.example.MathruAI_BackEnd.service.interservice.thriposha.TriposhaService;
+import com.example.MathruAI_BackEnd.service.impl.thriposha.TriposhaService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

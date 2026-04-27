@@ -64,7 +64,8 @@ public class SecurityConfig {
                     auth
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                             .requestMatchers("/api/auth/signup", "/api/auth/signin").permitAll()
-                    .requestMatchers("/ws-chat/**").permitAll();
+                            .requestMatchers("/ws-chat/**").permitAll()
+                            .requestMatchers("/api/checklist/**").permitAll();
                     // .requestMatchers( "/api/auth/signin").permitAll();
                     // .requestMatchers("/api/auth/").authenticated();
                     auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll();

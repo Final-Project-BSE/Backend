@@ -38,66 +38,47 @@ public class HealthRecordServiceImpl implements HealthRecordServiceInter {
 
     @Override
     public List<HealthCategoryResponseDto> getAllCategoriesWithCounts(String email) {
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found."));
-        List<HealthCategory> categories = categoryRepository.findAll();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found."));
 
-        return categories.stream().map(cat -> {
-            long count = recordRepository.findByUserAndCategory(user, cat).size();
-            return HealthCategoryResponseDto.builder()
-                    .id(cat.getId())
-                    .slug(cat.getSlug())
-                    .name(cat.getName())
-                    .icon(cat.getIcon())
-                    .colorClass(cat.getColorClass())
-                    .recordCount(count)
-                    .build();
-        }).collect(Collectors.toList());
+        return categoryRepository.findAll().stream().map(cat ->
+                HealthCategoryResponseDto.builder()
+                        .id(cat.getId())
+                        .slug(cat.getSlug())
+                        .name(cat.getName())
+                        .icon(cat.getIcon())
+                        .colorClass(cat.getColorClass())
+                        .recordCount(recordRepository.findByUserAndCategory(user, cat).size())
+                        .build()
+        ).collect(Collectors.toList());
     }
 
     @Override
     public List<HealthRecordResponseDto> getRecordsByCategory(String email, UUID categoryId) {
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found."));
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found."));
+
         HealthCategory category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found."));
 
-        List<HealthRecord> records = recordRepository.findByUserAndCategory(user, category);
-        return records.stream().map(this::mapToResponse).collect(Collectors.toList());
+        return recordRepository.findByUserAndCategory(user, category)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public HealthRecordResponseDto createRecord(String email, UUID categoryId, HealthRecordRequestDto request)
             throws IOException {
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found."));
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found."));
+
         HealthCategory category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found."));
 
-        HealthRecord record = HealthRecord.builder()
-                .user(user)
-                .category(category)
-                .name(request.getName())
-                .date(LocalDate.parse(request.getDate()))
-                .description(request.getDescription())
-                .build();
-
-        HealthRecord savedRecord = recordRepository.save(record);
-
-        if (request.getFiles() != null && !request.getFiles().isEmpty()) {
-            List<RecordFile> files = new ArrayList<>();
-            for (MultipartFile file : request.getFiles()) {
-                String fileUrl = fileUploadService.storeFile(file);
-                RecordFile recordFile = RecordFile.builder()
-                        .record(savedRecord)
-                        .fileName(file.getOriginalFilename())
-                        .fileType(file.getContentType())
-                        .fileUrl(fileUrl)
-                        .fileSize(file.getSize())
-                        .build();
-                files.add(recordFile);
-            }
-            fileRepository.saveAll(files);
-        }
-
+        HealthRecord savedRecord = saveHealthRecord(user, category, request);
         return getRecordDetails(savedRecord.getId());
     }
 
@@ -105,6 +86,7 @@ public class HealthRecordServiceImpl implements HealthRecordServiceInter {
     public HealthRecordResponseDto getRecordDetails(UUID recordId) {
         HealthRecord record = recordRepository.findById(recordId)
                 .orElseThrow(() -> new RuntimeException("Health record not found."));
+
         return mapToResponse(record);
     }
 
@@ -117,30 +99,17 @@ public class HealthRecordServiceImpl implements HealthRecordServiceInter {
         if (request.getName() != null) {
             record.setName(request.getName());
         }
+
         if (request.getDate() != null) {
             record.setDate(LocalDate.parse(request.getDate()));
         }
+
         if (request.getDescription() != null) {
             record.setDescription(request.getDescription());
         }
 
         HealthRecord updatedRecord = recordRepository.save(record);
-
-        if (request.getFiles() != null && !request.getFiles().isEmpty()) {
-            List<RecordFile> files = new ArrayList<>();
-            for (MultipartFile file : request.getFiles()) {
-                String fileUrl = fileUploadService.storeFile(file);
-                RecordFile recordFile = RecordFile.builder()
-                        .record(updatedRecord)
-                        .fileName(file.getOriginalFilename())
-                        .fileType(file.getContentType())
-                        .fileUrl(fileUrl)
-                        .fileSize(file.getSize())
-                        .build();
-                files.add(recordFile);
-            }
-            fileRepository.saveAll(files);
-        }
+        saveFiles(updatedRecord, request.getFiles());
 
         return getRecordDetails(updatedRecord.getId());
     }
@@ -151,39 +120,33 @@ public class HealthRecordServiceImpl implements HealthRecordServiceInter {
         HealthRecord record = recordRepository.findById(recordId)
                 .orElseThrow(() -> new RuntimeException("Health record not found."));
 
-        if (record.getFiles() != null) {
-            for (RecordFile file : record.getFiles()) {
-                if (file.getFileUrl() != null && file.getFileUrl().contains("/api/health-records/files/")) {
-                    String fileName = file.getFileUrl().substring(file.getFileUrl().lastIndexOf("/") + 1);
-                    fileUploadService.deleteFile(fileName);
-                }
-            }
-        }
-
-        recordRepository.delete(record);
+        deleteRecordWithFiles(record);
     }
 
     @Override
     public List<HealthCategoryResponseDto> getCategoriesForAssignedPatient(Long midwifeId, Long patientId) {
         User patient = getAssignedPatientOrThrow(midwifeId, patientId);
-        List<HealthCategory> categories = categoryRepository.findAll();
 
-        return categories.stream().map(cat -> {
-            long count = recordRepository.findByUserAndCategory(patient, cat).size();
-            return HealthCategoryResponseDto.builder()
-                    .id(cat.getId())
-                    .slug(cat.getSlug())
-                    .name(cat.getName())
-                    .icon(cat.getIcon())
-                    .colorClass(cat.getColorClass())
-                    .recordCount(count)
-                    .build();
-        }).collect(Collectors.toList());
+        return categoryRepository.findAll().stream().map(cat ->
+                HealthCategoryResponseDto.builder()
+                        .id(cat.getId())
+                        .slug(cat.getSlug())
+                        .name(cat.getName())
+                        .icon(cat.getIcon())
+                        .colorClass(cat.getColorClass())
+                        .recordCount(recordRepository.findByUserAndCategory(patient, cat).size())
+                        .build()
+        ).collect(Collectors.toList());
     }
 
     @Override
-    public List<HealthRecordResponseDto> getRecordsByCategoryForAssignedPatient(Long midwifeId, Long patientId, UUID categoryId) {
+    public List<HealthRecordResponseDto> getRecordsByCategoryForAssignedPatient(
+            Long midwifeId,
+            Long patientId,
+            UUID categoryId
+    ) {
         User patient = getAssignedPatientOrThrow(midwifeId, patientId);
+
         HealthCategory category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found."));
 
@@ -194,13 +157,121 @@ public class HealthRecordServiceImpl implements HealthRecordServiceInter {
     }
 
     @Override
-    public HealthRecordResponseDto getRecordDetailForAssignedPatient(Long midwifeId, Long patientId, UUID recordId) {
+    public HealthRecordResponseDto getRecordDetailForAssignedPatient(
+            Long midwifeId,
+            Long patientId,
+            UUID recordId
+    ) {
         User patient = getAssignedPatientOrThrow(midwifeId, patientId);
 
         HealthRecord record = recordRepository.findByIdAndUser(recordId, patient)
                 .orElseThrow(() -> new RuntimeException("Health record not found for this patient."));
 
         return mapToResponse(record);
+    }
+
+    @Override
+    @Transactional
+    public HealthRecordResponseDto createRecordForAssignedPatient(
+            Long midwifeId,
+            Long patientId,
+            UUID categoryId,
+            HealthRecordRequestDto request
+    ) throws IOException {
+
+        User patient = getAssignedPatientOrThrow(midwifeId, patientId);
+
+        HealthCategory category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found."));
+
+        HealthRecord savedRecord = saveHealthRecord(patient, category, request);
+
+        return getRecordDetailForAssignedPatient(midwifeId, patientId, savedRecord.getId());
+    }
+
+    @Override
+    @Transactional
+    public void deleteRecordForAssignedPatient(
+            Long midwifeId,
+            Long patientId,
+            UUID recordId
+    ) throws IOException {
+
+        User patient = getAssignedPatientOrThrow(midwifeId, patientId);
+
+        HealthRecord record = recordRepository.findByIdAndUser(recordId, patient)
+                .orElseThrow(() -> new RuntimeException("Health record not found for this patient."));
+
+        deleteRecordWithFiles(record);
+    }
+
+    private HealthRecord saveHealthRecord(
+            User user,
+            HealthCategory category,
+            HealthRecordRequestDto request
+    ) throws IOException {
+
+        HealthRecord record = HealthRecord.builder()
+                .user(user)
+                .category(category)
+                .name(request.getName())
+                .date(LocalDate.parse(request.getDate()))
+                .description(request.getDescription())
+                .build();
+
+        HealthRecord savedRecord = recordRepository.save(record);
+        saveFiles(savedRecord, request.getFiles());
+
+        return savedRecord;
+    }
+
+    private void saveFiles(HealthRecord record, List<MultipartFile> uploadedFiles) throws IOException {
+        if (uploadedFiles == null || uploadedFiles.isEmpty()) {
+            return;
+        }
+
+        List<RecordFile> files = new ArrayList<>();
+
+        for (MultipartFile file : uploadedFiles) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+
+            String fileUrl = fileUploadService.storeFile(file);
+
+            RecordFile recordFile = RecordFile.builder()
+                    .record(record)
+                    .fileName(file.getOriginalFilename())
+                    .fileType(file.getContentType())
+                    .fileUrl(fileUrl)
+                    .fileSize(file.getSize())
+                    .build();
+
+            files.add(recordFile);
+        }
+
+        if (!files.isEmpty()) {
+            fileRepository.saveAll(files);
+        }
+    }
+
+    private void deleteRecordWithFiles(HealthRecord record) throws IOException {
+        if (record.getFiles() != null) {
+            for (RecordFile file : record.getFiles()) {
+                deletePhysicalFile(file);
+            }
+        }
+
+        recordRepository.delete(record);
+    }
+
+    private void deletePhysicalFile(RecordFile file) throws IOException {
+        if (file.getFileUrl() == null || !file.getFileUrl().contains("/api/health-records/files/")) {
+            return;
+        }
+
+        String fileName = file.getFileUrl().substring(file.getFileUrl().lastIndexOf("/") + 1);
+        fileUploadService.deleteFile(fileName);
     }
 
     private User getAssignedPatientOrThrow(Long midwifeId, Long patientId) {
@@ -225,7 +296,8 @@ public class HealthRecordServiceImpl implements HealthRecordServiceInter {
     private HealthRecordResponseDto mapToResponse(HealthRecord record) {
         List<RecordFileResponseDto> files = record.getFiles() == null
                 ? List.of()
-                : record.getFiles().stream()
+                : record.getFiles()
+                .stream()
                 .map(this::mapFileToResponse)
                 .collect(Collectors.toList());
 
@@ -251,6 +323,4 @@ public class HealthRecordServiceImpl implements HealthRecordServiceInter {
                 .fileSize(file.getFileSize())
                 .build();
     }
-
-
 }

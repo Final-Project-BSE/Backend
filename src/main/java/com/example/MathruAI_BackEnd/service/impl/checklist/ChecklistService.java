@@ -8,8 +8,10 @@ import com.example.MathruAI_BackEnd.repository.checklist.UserChecklistStatusRepo
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import java.util.Map;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -55,26 +57,7 @@ public class ChecklistService {
         statusRepo.deleteByChecklist(item);
         checklistRepo.delete(item);
     }
-
-    public List<UserChecklistDto> getChecklistForUser(Long userId, Long midwifeId) {
-        return checklistRepo.findByMidwifeId(midwifeId)
-                .stream()
-                .map(item -> {
-                    boolean checked = statusRepo.findByUserIdAndChecklist(userId, item)
-                            .map(UserChecklistStatus::isChecked)
-                            .orElse(false);
-
-                    return UserChecklistDto.builder()
-                            .id(item.getId())
-                            .name(item.getName())
-                            .quantity(item.getQuantity())
-                            .category(item.getCategory())
-                            .checked(checked)
-                            .build();
-                })
-                .toList();
-    }
-
+    
     public UserChecklistDto toggleUserItem(Long userId, Long midwifeId, Long checklistId) {
         Checklist checklist = checklistRepo.findById(checklistId)
                 .orElseThrow(() -> new RuntimeException("Checklist item not found"));
@@ -102,5 +85,27 @@ public class ChecklistService {
                 .category(checklist.getCategory())
                 .checked(status.isChecked())
                 .build();
+    }
+
+    public List<UserChecklistDto> getChecklistForUser(Long userId, Long midwifeId) {
+        List<Checklist> items = checklistRepo.findByMidwifeId(midwifeId);
+
+        Map<Long, Boolean> checkedMap = statusRepo
+                .findByUserIdAndChecklistMidwifeId(userId, midwifeId)
+                .stream()
+                .collect(Collectors.toMap(
+                        status -> status.getChecklist().getId(),
+                        UserChecklistStatus::isChecked
+                ));
+
+        return items.stream()
+                .map(item -> UserChecklistDto.builder()
+                        .id(item.getId())
+                        .name(item.getName())
+                        .quantity(item.getQuantity())
+                        .category(item.getCategory())
+                        .checked(checkedMap.getOrDefault(item.getId(), false))
+                        .build())
+                .toList();
     }
 }

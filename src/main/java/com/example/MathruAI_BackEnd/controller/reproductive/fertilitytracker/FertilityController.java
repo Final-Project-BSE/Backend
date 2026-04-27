@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 public class FertilityController {
 
     private static final Logger log = LoggerFactory.getLogger(FertilityController.class);
+
     private final FertilityCalculatorService service;
 
     public FertilityController(FertilityCalculatorService service) {
@@ -38,6 +39,7 @@ public class FertilityController {
         String userSub = authentication.getName();
 
         CycleData data = service.getLatestForUser(userSub);
+
         return ResponseEntity.ok(new FertilityResponseDto(
                 data.getFertileWindowStart(),
                 data.getFertileWindowEnd(),
@@ -47,7 +49,9 @@ public class FertilityController {
                 data.getSafeStart1(),
                 data.getSafeEnd1(),
                 data.getSafeStart2(),
-                data.getSafeEnd2()
+                data.getSafeEnd2(),
+                data.getLastPeriodDate(),
+                data.getAverageCycleLength()
         ));
     }
 
@@ -56,6 +60,19 @@ public class FertilityController {
             @PathVariable Long midwifeId,
             @PathVariable Long patientId
     ) {
-        return ResponseEntity.ok(service.getLatestForAssignedPatient(midwifeId, patientId));
+        return ResponseEntity.ok(
+                service.getLatestForAssignedPatient(midwifeId, patientId)
+        );
+    }
+
+    @PostMapping("/midwife/{midwifeId}/patient/{patientId}/calculate")
+    public ResponseEntity<FertilityResponseDto> calculateForAssignedPatient(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId,
+            @RequestBody FertilityRequestDto request
+    ) {
+        return ResponseEntity.ok(
+                service.calculateAndSaveForAssignedPatient(midwifeId, patientId, request)
+        );
     }
 }

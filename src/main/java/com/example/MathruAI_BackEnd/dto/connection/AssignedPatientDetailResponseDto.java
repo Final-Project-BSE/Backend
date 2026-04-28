@@ -33,4 +33,5 @@ public class AssignedPatientDetailResponseDto {
     private boolean canViewHealthRecords;
     private boolean canViewFertility;
     private boolean canViewRiskPredictions;
+    private boolean canManageAppointments;
 }

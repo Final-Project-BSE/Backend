@@ -583,6 +583,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                 .canViewHealthRecords(true)
                 .canViewFertility(true)
                 .canViewRiskPredictions(true)
+                .canManageAppointments(true)
                 .build();
     }
 

@@ -29,4 +29,17 @@ public interface HealthRecordServiceInter {
     List<HealthRecordResponseDto> getRecordsByCategoryForAssignedPatient(Long midwifeId, Long patientId, UUID categoryId);
 
     HealthRecordResponseDto getRecordDetailForAssignedPatient(Long midwifeId, Long patientId, UUID recordId);
+
+    HealthRecordResponseDto createRecordForAssignedPatient(
+            Long midwifeId,
+            Long patientId,
+            UUID categoryId,
+            HealthRecordRequestDto request
+    ) throws IOException;
+
+    void deleteRecordForAssignedPatient(
+            Long midwifeId,
+            Long patientId,
+            UUID recordId
+    ) throws IOException;
 }

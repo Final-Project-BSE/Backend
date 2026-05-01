@@ -23,7 +23,7 @@ public class HealthCategoryInitializer implements CommandLineRunner {
                             .colorClass("bg-blue-100").build(),
                     HealthCategory.builder().name("Lab Test Results").slug("lab-results").icon("🔬")
                             .colorClass("bg-red-100").build(),
-                    HealthCategory.builder().name("Ultrasound & Scans").slug("scans").icon("💀")
+                    HealthCategory.builder().name("Ultrasound & Scans").slug("scans").icon("📝")
                             .colorClass("bg-purple-100").build(),
                     HealthCategory.builder().name("Medications & Supplements").slug("medications").icon("💊")
                             .colorClass("bg-pink-100").build(),

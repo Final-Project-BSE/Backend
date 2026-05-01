@@ -228,10 +228,12 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         userRepository.save(mother);
     }
 
+
+
     @Override
     @Transactional(readOnly = true)
     public List<ConnectionRequestResponseDto> getSentRequests(Long userId) {
-        return requestRepository.findBySenderIdOrderByCreatedAtDesc(userId)
+        return requestRepository.findSentWithUsers(userId)
                 .stream()
                 .map(this::mapRequest)
                 .collect(Collectors.toList());
@@ -240,7 +242,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
     @Override
     @Transactional(readOnly = true)
     public List<ConnectionRequestResponseDto> getReceivedRequests(Long userId) {
-        return requestRepository.findByReceiverIdOrderByCreatedAtDesc(userId)
+        return requestRepository.findReceivedWithUsers(userId)
                 .stream()
                 .map(this::mapRequest)
                 .collect(Collectors.toList());

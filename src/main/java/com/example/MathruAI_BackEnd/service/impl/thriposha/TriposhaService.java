@@ -1,4 +1,4 @@
-package com.example.MathruAI_BackEnd.service.interservice.thriposha;
+package com.example.MathruAI_BackEnd.service.impl.thriposha;
 
 import com.example.MathruAI_BackEnd.dto.triposhaDto.TriposhaDTO;
 import com.example.MathruAI_BackEnd.entity.triposha.TriposhaRecord;

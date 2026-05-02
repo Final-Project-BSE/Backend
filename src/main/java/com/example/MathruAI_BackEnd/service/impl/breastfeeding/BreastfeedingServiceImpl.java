@@ -6,6 +6,7 @@ import com.example.MathruAI_BackEnd.dto.breastfeeding.BreastfeedingSessionReques
 import com.example.MathruAI_BackEnd.dto.breastfeeding.BreastfeedingSessionResponseDto;
 import com.example.MathruAI_BackEnd.dto.breastfeeding.BreastfeedingTipRequestDto;
 import com.example.MathruAI_BackEnd.dto.breastfeeding.BreastfeedingTipResponseDto;
+import com.example.MathruAI_BackEnd.entity.Role;
 import com.example.MathruAI_BackEnd.entity.User;
 import com.example.MathruAI_BackEnd.entity.breastfeeding.BreastfeedingIssue;
 import com.example.MathruAI_BackEnd.entity.breastfeeding.BreastfeedingSession;
@@ -33,9 +34,30 @@ public class BreastfeedingServiceImpl implements BreastfeedingServiceInter {
     private final BreastfeedingTipRepository tipRepository;
     private final UserRepository userRepository;
 
+    // ===================== HELPER =====================
+
     private User getUser(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found."));
+    }
+
+    private User getAssignedPatientOrThrow(Long midwifeId, Long patientId) {
+        User midwife = userRepository.findById(midwifeId)
+                .orElseThrow(() -> new RuntimeException("Midwife not found."));
+
+        User patient = userRepository.findById(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient not found."));
+
+        if (midwife.getRoles() == null || !midwife.getRoles().contains(Role.MIDWIFE)) {
+            throw new RuntimeException("User is not a midwife.");
+        }
+
+        if (patient.getAssignedMidwife() == null ||
+                !patient.getAssignedMidwife().getId().equals(midwifeId)) {
+            throw new RuntimeException("Patient is not assigned to this midwife.");
+        }
+
+        return patient;
     }
 
     // ===================== SESSION =====================
@@ -242,6 +264,50 @@ public class BreastfeedingServiceImpl implements BreastfeedingServiceInter {
                 .orElseThrow(() -> new RuntimeException("Tip not found."));
 
         tipRepository.delete(tip);
+    }
+
+    // ===================== MIDWIFE =====================
+
+    @Override
+    public List<BreastfeedingSessionResponseDto> getPatientSessionsForMidwife(
+            Long midwifeId, Long patientId) {
+        User patient = getAssignedPatientOrThrow(midwifeId, patientId);
+        return sessionRepository.findByUserOrderByFeedingTimeDesc(patient)
+                .stream()
+                .map(this::mapSessionToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<BreastfeedingIssueResponseDto> getPatientIssuesForMidwife(
+            Long midwifeId, Long patientId) {
+        User patient = getAssignedPatientOrThrow(midwifeId, patientId);
+        return issueRepository.findByUserOrderByReportedAtDesc(patient)
+                .stream()
+                .map(this::mapIssueToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public BreastfeedingIssueResponseDto updatePatientIssueForMidwife(
+            Long midwifeId,
+            Long patientId,
+            UUID issueId,
+            BreastfeedingIssueRequestDto request) {
+
+        User patient = getAssignedPatientOrThrow(midwifeId, patientId);
+
+        BreastfeedingIssue issue = issueRepository.findByIdAndUser(issueId, patient)
+                .orElseThrow(() -> new RuntimeException("Issue not found for this patient."));
+
+        if (request.getMidwifeNotes() != null) {
+            issue.setMidwifeNotes(request.getMidwifeNotes());
+        }
+
+        issue.setResolved(request.isResolved());
+
+        return mapIssueToResponse(issueRepository.save(issue));
     }
 
     // ===================== MAPPERS =====================

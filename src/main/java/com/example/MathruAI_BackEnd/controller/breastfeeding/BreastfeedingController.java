@@ -124,4 +124,38 @@ public class BreastfeedingController {
         breastfeedingService.deleteTip(getCurrentUserEmail(), tipId);
         return ResponseEntity.noContent().build();
     }
+
+    // ===================== MIDWIFE =====================
+
+    @GetMapping("/midwife/{midwifeId}/patient/{patientId}/sessions")
+    @Operation(summary = "Get patient sessions for midwife", description = "Fetch breastfeeding sessions for an assigned patient")
+    public ResponseEntity<List<BreastfeedingSessionResponseDto>> getPatientSessionsForMidwife(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId) {
+        return ResponseEntity.ok(
+                breastfeedingService.getPatientSessionsForMidwife(midwifeId, patientId)
+        );
+    }
+
+    @GetMapping("/midwife/{midwifeId}/patient/{patientId}/issues")
+    @Operation(summary = "Get patient issues for midwife", description = "Fetch breastfeeding issues for an assigned patient")
+    public ResponseEntity<List<BreastfeedingIssueResponseDto>> getPatientIssuesForMidwife(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId) {
+        return ResponseEntity.ok(
+                breastfeedingService.getPatientIssuesForMidwife(midwifeId, patientId)
+        );
+    }
+
+    @PutMapping("/midwife/{midwifeId}/patient/{patientId}/issues/{issueId}")
+    @Operation(summary = "Update patient issue for midwife", description = "Midwife updates note or resolves a patient issue")
+    public ResponseEntity<BreastfeedingIssueResponseDto> updatePatientIssueForMidwife(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId,
+            @PathVariable UUID issueId,
+            @RequestBody BreastfeedingIssueRequestDto request) {
+        return ResponseEntity.ok(
+                breastfeedingService.updatePatientIssueForMidwife(midwifeId, patientId, issueId, request)
+        );
+    }
 }

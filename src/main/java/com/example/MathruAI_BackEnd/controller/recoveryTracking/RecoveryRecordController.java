@@ -13,7 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/recovery-records")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*") // Adjust based on your general security configuration
+@CrossOrigin(origins = "*")
 public class RecoveryRecordController {
 
     private final RecoveryRecordService recoveryRecordService;

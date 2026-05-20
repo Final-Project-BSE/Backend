@@ -38,9 +38,7 @@ public class User {
 
     private String profileImageUrl;
 
-    /**
-     * old field kept for backward compatibility
-     */
+    //old field kept for backward compatibility
     private String area;
 
     @Column(name = "district")

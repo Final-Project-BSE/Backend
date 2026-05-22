@@ -31,6 +31,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
 
     private final UserRepository userRepository;
     private final MidwifeMotherRequestRepository requestRepository;
+    private final ConnectionEmailService connectionEmailService;
 
     private static final Set<Role> MOTHER_ROLES = Set.of(
             Role.HOPE_TO_PREGNANT_MOTHER,
@@ -94,7 +95,11 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
                     .respondedAt(null)
                     .build();
 
-            responses.add(mapRequest(requestRepository.save(entity)));
+            MidwifeMotherRequest saved = requestRepository.save(entity);
+
+            connectionEmailService.sendConnectionRequestCreatedEmails(saved);
+
+            responses.add(mapRequest(saved));
         }
 
         if (responses.isEmpty()) {
@@ -143,9 +148,12 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
 
         entity.setStatus(ConnectionRequestStatus.APPROVED);
         entity.setRespondedAt(LocalDateTime.now());
-        requestRepository.save(entity);
 
-        return mapRequest(entity);
+        MidwifeMotherRequest saved = requestRepository.save(entity);
+
+        connectionEmailService.sendConnectionRequestApprovedEmails(saved, midwife, motherUser);
+
+        return mapRequest(saved);
     }
 
     @Override
@@ -164,7 +172,11 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         entity.setStatus(ConnectionRequestStatus.REJECTED);
         entity.setRespondedAt(LocalDateTime.now());
 
-        return mapRequest(requestRepository.save(entity));
+        MidwifeMotherRequest saved = requestRepository.save(entity);
+
+        connectionEmailService.sendConnectionRequestRejectedEmails(saved);
+
+        return mapRequest(saved);
     }
 
     @Override
@@ -183,7 +195,11 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         entity.setStatus(ConnectionRequestStatus.CANCELLED);
         entity.setRespondedAt(LocalDateTime.now());
 
-        return mapRequest(requestRepository.save(entity));
+        MidwifeMotherRequest saved = requestRepository.save(entity);
+
+        connectionEmailService.sendConnectionRequestCancelledEmails(saved);
+
+        return mapRequest(saved);
     }
 
     @Override
@@ -202,8 +218,16 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
             throw new RuntimeException("No midwife is assigned to this user.");
         }
 
+        User previousMidwife = mother.getAssignedMidwife();
+
         mother.setAssignedMidwife(null);
         userRepository.save(mother);
+
+        connectionEmailService.sendAssignedConnectionRemovedEmails(
+                previousMidwife,
+                mother,
+                "Mother / Patient"
+        );
     }
 
     @Override
@@ -226,9 +250,13 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
 
         mother.setAssignedMidwife(null);
         userRepository.save(mother);
+
+        connectionEmailService.sendAssignedConnectionRemovedEmails(
+                midwife,
+                mother,
+                "Midwife"
+        );
     }
-
-
 
     @Override
     @Transactional(readOnly = true)
@@ -342,7 +370,10 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserResponseDto> searchMappableUsersByDistrictAndMohArea(Long requesterId, AreaMapSearchRequestDto request) {
+    public List<UserResponseDto> searchMappableUsersByDistrictAndMohArea(
+            Long requesterId,
+            AreaMapSearchRequestDto request
+    ) {
         User requester = getUserOrThrow(requesterId);
 
         validateAreaSearchRequest(request.getDistrict(), request.getMohArea());
@@ -379,6 +410,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         if (district == null || district.isBlank()) {
             throw new RuntimeException("District is required.");
         }
+
         if (mohArea == null || mohArea.isBlank()) {
             throw new RuntimeException("MOH area is required.");
         }
@@ -415,6 +447,7 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         }
 
         Collection<Role> targetRoles = hasRole(sender, Role.MIDWIFE) ? MOTHER_ROLES : MIDWIFE_ROLE;
+
         return userRepository.findByAreaAndAnyRole(normalizeText(area), targetRoles)
                 .stream()
                 .filter(user -> !Objects.equals(user.getId(), sender.getId()))
@@ -538,9 +571,16 @@ public class MidwifeConnectionServiceImpl implements MidwifeConnectionService {
         String assignedMidwifeName = null;
 
         if (user.getAssignedMidwife() != null) {
-            String firstName = user.getAssignedMidwife().getFirstName() == null ? "" : user.getAssignedMidwife().getFirstName().trim();
-            String lastName = user.getAssignedMidwife().getLastName() == null ? "" : user.getAssignedMidwife().getLastName().trim();
+            String firstName = user.getAssignedMidwife().getFirstName() == null
+                    ? ""
+                    : user.getAssignedMidwife().getFirstName().trim();
+
+            String lastName = user.getAssignedMidwife().getLastName() == null
+                    ? ""
+                    : user.getAssignedMidwife().getLastName().trim();
+
             assignedMidwifeName = (firstName + " " + lastName).trim();
+
             if (assignedMidwifeName.isBlank()) {
                 assignedMidwifeName = user.getAssignedMidwife().getEmail();
             }

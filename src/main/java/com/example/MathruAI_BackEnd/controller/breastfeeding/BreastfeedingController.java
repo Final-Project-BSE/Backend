@@ -29,8 +29,7 @@ public class BreastfeedingController {
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
-    // ===================== SESSION =====================
-
+    // SESSION
     @GetMapping("/sessions")
     @Operation(summary = "Get all sessions", description = "Fetch all breastfeeding sessions for the logged-in user")
     public ResponseEntity<List<BreastfeedingSessionResponseDto>> getAllSessions() {
@@ -59,7 +58,7 @@ public class BreastfeedingController {
         return ResponseEntity.noContent().build();
     }
 
-    // ===================== ISSUE =====================
+    //ISSUE
 
     @GetMapping("/issues")
     @Operation(summary = "Get all issues", description = "Fetch all breastfeeding issues for the logged-in user")
@@ -95,7 +94,7 @@ public class BreastfeedingController {
         return ResponseEntity.noContent().build();
     }
 
-    // ===================== TIP =====================
+    //TIP
 
     @GetMapping("/tips")
     @Operation(summary = "Get all active tips", description = "Fetch all active breastfeeding tips")
@@ -125,7 +124,7 @@ public class BreastfeedingController {
         return ResponseEntity.noContent().build();
     }
 
-    // ===================== MIDWIFE =====================
+    //MIDWIFE
 
     @GetMapping("/midwife/{midwifeId}/patient/{patientId}/sessions")
     @Operation(summary = "Get patient sessions for midwife", description = "Fetch breastfeeding sessions for an assigned patient")

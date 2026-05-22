@@ -20,9 +20,6 @@ public class SignupRequest {
     private String address;
     private String profileImageUrl;
 
-    /**
-     * old field kept for backward compatibility
-     */
     private String area;
 
     private String district;

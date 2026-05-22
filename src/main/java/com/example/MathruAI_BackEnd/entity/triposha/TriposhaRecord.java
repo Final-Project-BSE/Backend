@@ -12,7 +12,6 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Getter
 @Setter
-
 public class TriposhaRecord {
 
 
@@ -31,6 +30,4 @@ public class TriposhaRecord {
     private LocalDate nextDueDate;
 
     private String notes;
-
-    // Getters & Setters
 }

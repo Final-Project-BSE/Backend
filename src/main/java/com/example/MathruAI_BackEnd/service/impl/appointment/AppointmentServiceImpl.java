@@ -37,6 +37,7 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
 
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Colombo");
     private static final int UNAVAILABLE_WINDOW_DAYS = 90;
+
     private static final List<LocalTime> SUPPORTED_SLOTS = List.of(
             LocalTime.of(8, 0),
             LocalTime.of(9, 0),
@@ -57,9 +58,14 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
 
     private final UserRepository userRepository;
     private final AppointmentRepository appointmentRepository;
+    private final AppointmentEmailService appointmentEmailService;
 
     @Override
-    public AppointmentResponseDto createAppointment(Long midwifeId, Long userId, AppointmentCreateRequestDto request) {
+    public AppointmentResponseDto createAppointment(
+            Long midwifeId,
+            Long userId,
+            AppointmentCreateRequestDto request
+    ) {
         User midwife = getUserOrThrow(midwifeId, "Midwife not found.");
         User patient = getUserOrThrow(userId, "User not found.");
 
@@ -68,15 +74,19 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
         validateTimeRange(request.getStartTime(), request.getEndTime());
         validateDateTimeNotInPast(request.getAppointmentDate(), request.getStartTime());
 
-        List<Appointment> conflictsWithLock = appointmentRepository.findByMidwifeAndAppointmentDateAndStartTimeAndStatus(
-                midwife,
-                request.getAppointmentDate(),
-                request.getStartTime(),
-                AppointmentStatus.SCHEDULED
-        );
+        List<Appointment> conflictsWithLock =
+                appointmentRepository.findByMidwifeAndAppointmentDateAndStartTimeAndStatus(
+                        midwife,
+                        request.getAppointmentDate(),
+                        request.getStartTime(),
+                        AppointmentStatus.SCHEDULED
+                );
 
         if (!conflictsWithLock.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Selected time slot conflicts with an existing appointment.");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Selected time slot conflicts with an existing appointment."
+            );
         }
 
         Appointment appointment = Appointment.builder()
@@ -91,7 +101,11 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
                 .status(AppointmentStatus.SCHEDULED)
                 .build();
 
-        return mapToResponse(appointmentRepository.save(appointment));
+        Appointment saved = appointmentRepository.save(appointment);
+
+        appointmentEmailService.sendAppointmentCreatedEmails(saved);
+
+        return mapToResponse(saved);
     }
 
     @Override
@@ -102,7 +116,8 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
 
         validateMidwifePatientAssignment(midwife, patient);
 
-        return appointmentRepository.findByMidwifeAndPatientOrderByAppointmentDateAscStartTimeAsc(midwife, patient)
+        return appointmentRepository
+                .findByMidwifeAndPatientOrderByAppointmentDateAscStartTimeAsc(midwife, patient)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -115,21 +130,57 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
 
         validateMidwifePatientAssignment(midwife, user);
 
-        Appointment appointment = appointmentRepository.findByIdAndMidwifeAndPatient(appointmentId, midwife, user)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found."));
+        Appointment appointment = appointmentRepository
+                .findByIdAndMidwifeAndPatient(appointmentId, midwife, user)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Appointment not found."
+                ));
 
         if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only SCHEDULED appointments can be cancelled.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only SCHEDULED appointments can be cancelled."
+            );
         }
 
         AppointmentResponseDto response = mapToResponse(appointment);
+
         appointmentRepository.delete(appointment);
+
+        appointmentEmailService.sendAppointmentCanceledEmails(appointment);
+
         return response;
     }
 
     @Override
     public AppointmentResponseDto completeAppointment(Long midwifeId, Long userId, Long appointmentId) {
-        return updateStatusForScheduledOnly(midwifeId, userId, appointmentId, AppointmentStatus.COMPLETED);
+        User midwife = getUserOrThrow(midwifeId, "Midwife not found.");
+        User user = getUserOrThrow(userId, "User not found.");
+
+        validateMidwifePatientAssignment(midwife, user);
+
+        Appointment appointment = appointmentRepository
+                .findByIdAndMidwifeAndPatient(appointmentId, midwife, user)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Appointment not found."
+                ));
+
+        if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only SCHEDULED appointments can be updated to this status."
+            );
+        }
+
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+
+        Appointment saved = appointmentRepository.save(appointment);
+
+        appointmentEmailService.sendAppointmentCompletedEmails(saved);
+
+        return mapToResponse(saved);
     }
 
     @Override
@@ -139,14 +190,23 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
 
         validateMidwifePatientAssignment(midwife, user);
 
-        Appointment appointment = appointmentRepository.findByIdAndMidwifeAndPatient(appointmentId, midwife, user)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found."));
+        Appointment appointment = appointmentRepository
+                .findByIdAndMidwifeAndPatient(appointmentId, midwife, user)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Appointment not found."
+                ));
 
         if (appointment.getStatus() != AppointmentStatus.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only COMPLETED appointments can be deleted.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only COMPLETED appointments can be deleted."
+            );
         }
 
         appointmentRepository.delete(appointment);
+
+        appointmentEmailService.sendAppointmentDeletedEmails(appointment);
     }
 
     @Override
@@ -161,58 +221,66 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
         LocalDate last = today.plusDays(UNAVAILABLE_WINDOW_DAYS - 1L);
 
         List<Appointment> scheduledInWindow = appointmentRepository
-            .findByMidwifeAndStatusAndAppointmentDateBetweenOrderByAppointmentDateAscStartTimeAsc(
-                midwife,
-                AppointmentStatus.SCHEDULED,
-                today,
-                last
-            );
+                .findByMidwifeAndStatusAndAppointmentDateBetweenOrderByAppointmentDateAscStartTimeAsc(
+                        midwife,
+                        AppointmentStatus.SCHEDULED,
+                        today,
+                        last
+                );
 
         Map<LocalDate, Set<LocalTime>> slotsByDate = new LinkedHashMap<>();
+
         for (Appointment appointment : scheduledInWindow) {
             slotsByDate
-                .computeIfAbsent(appointment.getAppointmentDate(), d -> new HashSet<>())
-                .add(appointment.getStartTime());
+                    .computeIfAbsent(appointment.getAppointmentDate(), d -> new HashSet<>())
+                    .add(appointment.getStartTime());
         }
 
         Map<LocalDate, String> reasonByDate = new LinkedHashMap<>();
 
         for (Map.Entry<LocalDate, Set<LocalTime>> entry : slotsByDate.entrySet()) {
             if (entry.getValue().size() >= SUPPORTED_SLOTS.size()) {
-            reasonByDate.put(entry.getKey(), "All appointment time slots are filled for this day.");
+                reasonByDate.put(
+                        entry.getKey(),
+                        "All appointment time slots are filled for this day."
+                );
             }
         }
 
         return UnavailableDatesResponseDto.builder()
-            .dates(reasonByDate.keySet().stream().sorted().toList())
+                .dates(reasonByDate.keySet().stream().sorted().toList())
                 .reasonByDate(reasonByDate)
                 .build();
     }
 
-        @Override
-        @Transactional(readOnly = true)
-        public BookedSlotsResponseDto getBookedSlotsForDate(Long midwifeId, Long userId, LocalDate date) {
+    @Override
+    @Transactional(readOnly = true)
+    public BookedSlotsResponseDto getBookedSlotsForDate(
+            Long midwifeId,
+            Long userId,
+            LocalDate date
+    ) {
         User midwife = getUserOrThrow(midwifeId, "Midwife not found.");
         User user = getUserOrThrow(userId, "User not found.");
 
         validateMidwifePatientAssignment(midwife, user);
 
         List<LocalTime> bookedSlots = appointmentRepository
-            .findByMidwifeAndStatusAndAppointmentDateOrderByStartTimeAsc(
-                midwife,
-                AppointmentStatus.SCHEDULED,
-                date
-            )
-            .stream()
-            .map(Appointment::getStartTime)
-            .distinct()
-            .toList();
+                .findByMidwifeAndStatusAndAppointmentDateOrderByStartTimeAsc(
+                        midwife,
+                        AppointmentStatus.SCHEDULED,
+                        date
+                )
+                .stream()
+                .map(Appointment::getStartTime)
+                .distinct()
+                .toList();
 
         return BookedSlotsResponseDto.builder()
-            .date(date)
-            .bookedSlots(bookedSlots)
-            .build();
-        }
+                .date(date)
+                .bookedSlots(bookedSlots)
+                .build();
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -225,38 +293,24 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
 
         LocalDateTime now = LocalDateTime.now(APP_ZONE);
 
-        return appointmentRepository.findByMidwifeAndStatusOrderByAppointmentDateAscStartTimeAsc(
+        return appointmentRepository
+                .findByMidwifeAndStatusOrderByAppointmentDateAscStartTimeAsc(
                         midwife,
                         AppointmentStatus.SCHEDULED
                 )
                 .stream()
                 .filter(a -> a.getPatient() != null
-                    && a.getPatient().getAssignedMidwife() != null
-                    && midwifeId.equals(a.getPatient().getAssignedMidwife().getId()))
-                .filter(a -> !LocalDateTime.of(a.getAppointmentDate(), a.getStartTime()).isBefore(now))
+                        && a.getPatient().getAssignedMidwife() != null
+                        && midwifeId.equals(a.getPatient().getAssignedMidwife().getId()))
+                .filter(a -> !LocalDateTime.of(
+                        a.getAppointmentDate(),
+                        a.getStartTime()
+                ).isBefore(now))
                 .sorted(Comparator
-                    .comparing(Appointment::getAppointmentDate)
-                    .thenComparing(Appointment::getStartTime))
+                        .comparing(Appointment::getAppointmentDate)
+                        .thenComparing(Appointment::getStartTime))
                 .map(this::mapToUpcomingResponse)
                 .collect(Collectors.toList());
-    }
-
-    private AppointmentResponseDto updateStatusForScheduledOnly(Long midwifeId, Long userId, Long appointmentId, AppointmentStatus target) {
-        User midwife = getUserOrThrow(midwifeId, "Midwife not found.");
-        User user = getUserOrThrow(userId, "User not found.");
-
-        validateMidwifePatientAssignment(midwife, user);
-
-        Appointment appointment = appointmentRepository.findByIdAndMidwifeAndPatient(appointmentId, midwife, user)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found."));
-
-        if (appointment.getStatus() != AppointmentStatus.SCHEDULED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only SCHEDULED appointments can be updated to this status.");
-        }
-
-        appointment.setStatus(target);
-
-        return mapToResponse(appointmentRepository.save(appointment));
     }
 
     private void validateMidwifePatientAssignment(User midwife, User patient) {
@@ -265,18 +319,29 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
         }
 
         if (!hasAnyRole(patient, MOTHER_ROLES)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected user is not a mother-side patient.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Selected user is not a mother-side patient."
+            );
         }
 
-        if (patient.getAssignedMidwife() == null || !patient.getAssignedMidwife().getId().equals(midwife.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Patient is not assigned to this midwife.");
+        if (patient.getAssignedMidwife() == null
+                || !patient.getAssignedMidwife().getId().equals(midwife.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Patient is not assigned to this midwife."
+            );
         }
     }
 
     private void validateDateTimeNotInPast(LocalDate appointmentDate, LocalTime appointmentTime) {
         LocalDateTime appointmentDateTime = LocalDateTime.of(appointmentDate, appointmentTime);
+
         if (appointmentDateTime.isBefore(LocalDateTime.now(APP_ZONE))) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Appointment date and time cannot be in the past.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Appointment date and time cannot be in the past."
+            );
         }
     }
 
@@ -291,7 +356,10 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
 
     private void validateTimeRange(LocalTime startTime, LocalTime endTime) {
         if (endTime != null && !endTime.isAfter(startTime)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End time must be after start time.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "End time must be after start time."
+            );
         }
     }
 
@@ -305,18 +373,29 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
     }
 
     private boolean hasAnyRole(User user, Set<Role> roles) {
-        return user.getRoles() != null && user.getRoles().stream().anyMatch(roles::contains);
+        return user.getRoles() != null
+                && user.getRoles().stream().anyMatch(roles::contains);
     }
 
     private String trim(String value) {
-        return value == null ? null : value.trim();
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private AppointmentResponseDto mapToResponse(Appointment appointment) {
         return AppointmentResponseDto.builder()
                 .id(appointment.getId())
-                .midwifeId(appointment.getMidwife() != null ? appointment.getMidwife().getId() : null)
-                .userId(appointment.getPatient() != null ? appointment.getPatient().getId() : null)
+                .midwifeId(appointment.getMidwife() != null
+                        ? appointment.getMidwife().getId()
+                        : null)
+                .userId(appointment.getPatient() != null
+                        ? appointment.getPatient().getId()
+                        : null)
                 .appointmentDate(appointment.getAppointmentDate())
                 .startTime(appointment.getStartTime())
                 .endTime(appointment.getEndTime())
@@ -330,14 +409,24 @@ public class AppointmentServiceImpl implements AppointmentServiceInter {
     }
 
     private UpcomingAppointmentResponseDto mapToUpcomingResponse(Appointment appointment) {
-        String firstName = appointment.getPatient() != null ? appointment.getPatient().getFirstName() : null;
-        String lastName = appointment.getPatient() != null ? appointment.getPatient().getLastName() : null;
-        String userEmail = appointment.getPatient() != null ? appointment.getPatient().getEmail() : null;
+        String firstName = appointment.getPatient() != null
+                ? appointment.getPatient().getFirstName()
+                : null;
+
+        String lastName = appointment.getPatient() != null
+                ? appointment.getPatient().getLastName()
+                : null;
+
+        String userEmail = appointment.getPatient() != null
+                ? appointment.getPatient().getEmail()
+                : null;
 
         return UpcomingAppointmentResponseDto.builder()
-            .appointmentId(appointment.getId())
-                .userId(appointment.getPatient() != null ? appointment.getPatient().getId() : null)
-            .userEmail(userEmail)
+                .appointmentId(appointment.getId())
+                .userId(appointment.getPatient() != null
+                        ? appointment.getPatient().getId()
+                        : null)
+                .userEmail(userEmail)
                 .firstName(firstName)
                 .lastName(lastName)
                 .appointmentDate(appointment.getAppointmentDate())

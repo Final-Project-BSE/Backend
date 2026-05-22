@@ -13,8 +13,7 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(name = "uk_chat_midwife_mother", columnNames = {"midwife_id", "mother_id"})
         }
 )
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

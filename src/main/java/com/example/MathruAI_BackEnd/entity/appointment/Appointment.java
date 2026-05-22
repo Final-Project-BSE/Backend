@@ -11,8 +11,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Entity
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -44,9 +43,7 @@ public class Appointment {
     @JoinColumn(name = "user_id", nullable = false)
     private User patient;
 
-    /**
-     * Backward compatibility for old schema where patient_id is NOT NULL.
-     */
+    //Backward compatibility for old schema where patient_id is NOT NULL
     @Column(name = "patient_id")
     private Long legacyPatientId;
 
@@ -56,10 +53,7 @@ public class Appointment {
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
-    /**
-     * Backward compatibility for old schema where appointment_time is NOT NULL.
-     * Keep this synchronized with startTime so inserts work in both schemas.
-     */
+    //Backward compatibility for old schema where appointment_time is NOT NULL
     @Column(name = "appointment_time")
     private LocalTime legacyAppointmentTime;
 

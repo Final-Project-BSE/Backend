@@ -42,7 +42,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public String getUsername() {
-        return email; // Return email as username for Spring Security
+        return email;
     }
 
     public String getEmail() {

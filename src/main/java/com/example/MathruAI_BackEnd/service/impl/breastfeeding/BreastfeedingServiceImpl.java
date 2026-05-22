@@ -34,8 +34,7 @@ public class BreastfeedingServiceImpl implements BreastfeedingServiceInter {
     private final BreastfeedingTipRepository tipRepository;
     private final UserRepository userRepository;
 
-    // ===================== HELPER =====================
-
+    // helper
     private User getUser(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found."));
@@ -60,7 +59,7 @@ public class BreastfeedingServiceImpl implements BreastfeedingServiceInter {
         return patient;
     }
 
-    // ===================== SESSION =====================
+    // session
 
     @Override
     public List<BreastfeedingSessionResponseDto> getAllSessions(String email) {
@@ -126,7 +125,7 @@ public class BreastfeedingServiceImpl implements BreastfeedingServiceInter {
         sessionRepository.delete(session);
     }
 
-    // ===================== ISSUE =====================
+    // issue
 
     @Override
     public List<BreastfeedingIssueResponseDto> getAllIssues(String email) {
@@ -206,7 +205,7 @@ public class BreastfeedingServiceImpl implements BreastfeedingServiceInter {
         issueRepository.delete(issue);
     }
 
-    // ===================== TIP =====================
+    // tip
 
     @Override
     public List<BreastfeedingTipResponseDto> getAllActiveTips() {
@@ -266,7 +265,7 @@ public class BreastfeedingServiceImpl implements BreastfeedingServiceInter {
         tipRepository.delete(tip);
     }
 
-    // ===================== MIDWIFE =====================
+    // midwife
 
     @Override
     public List<BreastfeedingSessionResponseDto> getPatientSessionsForMidwife(
@@ -310,7 +309,7 @@ public class BreastfeedingServiceImpl implements BreastfeedingServiceInter {
         return mapIssueToResponse(issueRepository.save(issue));
     }
 
-    // ===================== MAPPERS =====================
+    // mappers
 
     private BreastfeedingSessionResponseDto mapSessionToResponse(BreastfeedingSession session) {
         return BreastfeedingSessionResponseDto.builder()

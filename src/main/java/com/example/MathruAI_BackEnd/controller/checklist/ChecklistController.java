@@ -17,7 +17,6 @@ public class ChecklistController {
     private final ChecklistService service;
 
     // MIDWIFE SIDE
-
     @GetMapping("/master/midwife/{midwifeId}")
     public List<Checklist> getMasterChecklist(@PathVariable Long midwifeId) {
         return service.getMasterItemsForMidwife(midwifeId);
@@ -49,7 +48,6 @@ public class ChecklistController {
     }
 
     // USER SIDE
-
     @GetMapping("/user/{userId}/midwife/{midwifeId}")
     public List<UserChecklistDto> getUserChecklist(
             @PathVariable Long userId,

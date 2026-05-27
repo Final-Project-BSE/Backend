@@ -15,4 +15,15 @@ public class SignupRequest {
     private LocalDate dateOfBirth;
     private String password;
     private Set<Role> roles;
+
+    private String nationalIdNumber;
+    private String address;
+    private String profileImageUrl;
+
+    private String area;
+
+    private String district;
+    private String mohArea;
+    private Double latitude;
+    private Double longitude;
 }

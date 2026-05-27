@@ -1,8 +1,8 @@
 package com.example.MathruAI_BackEnd.service.impl;
 
-import com.example.MathruAI_BackEnd.dto.AuthResponse;
 import com.example.MathruAI_BackEnd.dto.LoginRequest;
 import com.example.MathruAI_BackEnd.dto.SignupRequest;
+import com.example.MathruAI_BackEnd.entity.Role;
 import com.example.MathruAI_BackEnd.entity.User;
 import com.example.MathruAI_BackEnd.repository.UserRepository;
 import com.example.MathruAI_BackEnd.security.JwtUtil;
@@ -17,7 +17,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import com.example.MathruAI_BackEnd.entity.*;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
@@ -44,7 +43,16 @@ public class AuthService {
             return ResponseEntity.badRequest().body(response);
         }
 
-        // Create new user's account
+        if (request.getNationalIdNumber() != null
+                && !request.getNationalIdNumber().isBlank()
+                && userRepository.existsByNationalIdNumber(request.getNationalIdNumber())) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "FAIL");
+            response.put("message", "National ID number is already taken!");
+            response.put("data", null);
+            return ResponseEntity.badRequest().body(response);
+        }
+
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
@@ -52,7 +60,17 @@ public class AuthService {
         user.setPassword(encoder.encode(request.getPassword()));
         user.setDateOfBirth(request.getDateOfBirth());
         user.setPhoneNumber(request.getPhoneNumber());
-        user.setRoles(request.getRoles() != null ? request.getRoles() : Set.of(Role.HOPE_TO_PREGNANT_MOTHER));
+        user.setNationalIdNumber(request.getNationalIdNumber());
+        user.setAddress(request.getAddress());
+        user.setProfileImageUrl(request.getProfileImageUrl());
+        user.setArea(request.getArea());
+        user.setDistrict(normalizeText(request.getDistrict()));
+        user.setMohArea(normalizeText(request.getMohArea()));
+        user.setLatitude(request.getLatitude());
+        user.setLongitude(request.getLongitude());
+        user.setRoles(request.getRoles() != null && !request.getRoles().isEmpty()
+                ? request.getRoles()
+                : Set.of(Role.HOPE_TO_PREGNANT_MOTHER));
 
         userRepository.save(user);
 
@@ -60,33 +78,37 @@ public class AuthService {
         response.put("status", "SUCCESS");
         response.put("message", "User registered successfully!");
         response.put("data", null);
-        return ResponseEntity.ok().body(response);
+        return ResponseEntity.ok(response);
     }
 
     public ResponseEntity<?> signin(LoginRequest request) {
         try {
             Authentication authentication = authManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(),
-                            request.getPassword()));
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             String jwt = jwtUtil.generateJwtToken(authentication);
 
             UserPrincipal userDetails = (UserPrincipal) authentication.getPrincipal();
-            User user = userRepository.findByEmail(userDetails.getEmail()).get();
+            User user = userRepository.findByEmail(userDetails.getEmail()).orElseThrow();
 
-            // Convert roles to string array
             Set<String> roleStrings = user.getRoles().stream()
                     .map(Enum::name)
                     .collect(Collectors.toSet());
 
-            // Create data object
             Map<String, Object> data = new HashMap<>();
             data.put("email", user.getEmail());
             data.put("token", jwt);
             data.put("roles", roleStrings);
+            data.put("userId", user.getId());
+            data.put("area", user.getArea());
+            data.put("district", user.getDistrict());
+            data.put("mohArea", user.getMohArea());
+            data.put("latitude", user.getLatitude());
+            data.put("longitude", user.getLongitude());
+            data.put("assignedMidwifeId",
+                    user.getAssignedMidwife() != null ? user.getAssignedMidwife().getId() : null);
 
-            // Create response wrapper
             Map<String, Object> response = new HashMap<>();
             response.put("status", "SUCCESS");
             response.put("message", "Login successful");
@@ -114,7 +136,7 @@ public class AuthService {
                     response.put("status", "SUCCESS");
                     response.put("message", "Token is valid");
                     response.put("data", null);
-                    return ResponseEntity.ok().body(response);
+                    return ResponseEntity.ok(response);
                 }
             }
             Map<String, Object> response = new HashMap<>();
@@ -146,13 +168,29 @@ public class AuthService {
 
     public User updateUser(Long id, User user) {
         User existingUser = getUserById(id);
+
         existingUser.setFirstName(user.getFirstName());
         existingUser.setLastName(user.getLastName());
         existingUser.setEmail(user.getEmail());
+        existingUser.setPhoneNumber(user.getPhoneNumber());
+        existingUser.setDateOfBirth(user.getDateOfBirth());
+        existingUser.setNationalIdNumber(user.getNationalIdNumber());
+        existingUser.setAddress(user.getAddress());
+        existingUser.setProfileImageUrl(user.getProfileImageUrl());
+        existingUser.setArea(user.getArea());
+        existingUser.setDistrict(normalizeText(user.getDistrict()));
+        existingUser.setMohArea(normalizeText(user.getMohArea()));
+        existingUser.setLatitude(user.getLatitude());
+        existingUser.setLongitude(user.getLongitude());
+
         return userRepository.save(existingUser);
     }
 
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
+    }
+
+    private String normalizeText(String value) {
+        return value == null ? null : value.trim();
     }
 }

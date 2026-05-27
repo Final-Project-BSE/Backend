@@ -10,16 +10,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/fertility")
 public class FertilityController {
 
     private static final Logger log = LoggerFactory.getLogger(FertilityController.class);
+
     private final FertilityCalculatorService service;
 
     public FertilityController(FertilityCalculatorService service) {
         this.service = service;
-        log.info("✅ FertilityController initialized");
+        log.info("FertilityController initialized");
     }
 
     @PostMapping("/calculate")
@@ -27,7 +29,7 @@ public class FertilityController {
             Authentication authentication,
             @RequestBody FertilityRequestDto request
     ) {
-        String userSub = authentication.getName(); // email
+        String userSub = authentication.getName();
         FertilityResponseDto response = service.calculateAndSave(userSub, request);
         return ResponseEntity.ok(response);
     }
@@ -37,12 +39,40 @@ public class FertilityController {
         String userSub = authentication.getName();
 
         CycleData data = service.getLatestForUser(userSub);
+
         return ResponseEntity.ok(new FertilityResponseDto(
                 data.getFertileWindowStart(),
                 data.getFertileWindowEnd(),
                 data.getOvulationDate(),
                 data.getNextPeriodDate(),
-                data.getPregnancyTestDay()
+                data.getPregnancyTestDay(),
+                data.getSafeStart1(),
+                data.getSafeEnd1(),
+                data.getSafeStart2(),
+                data.getSafeEnd2(),
+                data.getLastPeriodDate(),
+                data.getAverageCycleLength()
         ));
+    }
+
+    @GetMapping("/midwife/{midwifeId}/patient/{patientId}/latest")
+    public ResponseEntity<FertilityResponseDto> getLatestForAssignedPatient(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId
+    ) {
+        return ResponseEntity.ok(
+                service.getLatestForAssignedPatient(midwifeId, patientId)
+        );
+    }
+
+    @PostMapping("/midwife/{midwifeId}/patient/{patientId}/calculate")
+    public ResponseEntity<FertilityResponseDto> calculateForAssignedPatient(
+            @PathVariable Long midwifeId,
+            @PathVariable Long patientId,
+            @RequestBody FertilityRequestDto request
+    ) {
+        return ResponseEntity.ok(
+                service.calculateAndSaveForAssignedPatient(midwifeId, patientId, request)
+        );
     }
 }
